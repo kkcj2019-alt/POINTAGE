@@ -400,32 +400,41 @@ function setupAuthUI() {
 
 // Initialisation de l'application
 document.addEventListener("DOMContentLoaded", () => {
-    loadStateFromLocalStorage();
+    // Montrer l'écran de connexion immédiatement avec indicateur de chargement Firebase
+    document.getElementById("login-overlay").style.display = "flex";
+    showLoginLoading(true);
     
-    // Check authentication
-    if (!state.currentUser) {
-        document.getElementById("login-overlay").style.display = "flex";
-    } else {
-        document.getElementById("login-overlay").style.display = "none";
-        setupAuthUI();
-    }
-    
-    initializeSelectors();
-    renderEmployeeList();
-    updateActiveEmployeeUI();
-    generateTable();
-    renderHolidaysList();
     setupEventListeners();
     
-    // Afficher la carte rattrapage si un employé est déjà actif
-    if (state.activeEmployeeId) {
-        const rattrapageCard = document.getElementById("rattrapage-card");
-        if (rattrapageCard) rattrapageCard.style.display = "block";
-    }
+    // Firebase se chargera dans loadStateFromLocalStorage et appellera refreshAllViews
+    loadStateFromLocalStorage();
     
     // Initialise les icônes Lucide
     lucide.createIcons();
 });
+
+function showLoginLoading(isLoading) {
+    let loadingDiv = document.getElementById("firebase-loading-msg");
+    const loginBtn = document.querySelector("#login-form button[type='submit']");
+    if (isLoading) {
+        if (!loadingDiv) {
+            loadingDiv = document.createElement("div");
+            loadingDiv.id = "firebase-loading-msg";
+            loadingDiv.style.cssText = "text-align:center; padding: 10px; color: #6b7280; font-size: 0.85rem; display:flex; align-items:center; justify-content:center; gap:8px;";
+            loadingDiv.innerHTML = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='animation: spin 1s linear infinite;'><path d='M21 12a9 9 0 1 1-6.219-8.56'/></svg><span>Connexion à la base de données...</span>`;
+            const style = document.createElement("style");
+            style.textContent = "@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }";
+            document.head.appendChild(style);
+            const form = document.getElementById("login-form");
+            form.insertBefore(loadingDiv, form.querySelector(".modal-footer, button[type='submit']"));
+        }
+        loadingDiv.style.display = "flex";
+        if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = "Chargement..."; }
+    } else {
+        if (loadingDiv) loadingDiv.style.display = "none";
+        if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = "Se connecter"; }
+    }
+}
 
 let isFirebaseInitialized = false;
 
@@ -480,7 +489,13 @@ function loadStateFromLocalStorage() {
             state.closedMonths = data.closedMonths || [];
             state.absenceAlerts = data.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
             
+            // S'assurer qu'il y a toujours un admin si la liste est vide
+            if (state.users.length === 0) {
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
+            }
+            
             isFirebaseInitialized = true;
+            showLoginLoading(false);
             refreshAllViews();
         } else {
             // Firebase est vide, on migre l'ancien LocalStorage si présent
@@ -507,22 +522,35 @@ function loadStateFromLocalStorage() {
             } else {
                 createDemoData();
             }
+            isFirebaseInitialized = true;
+            showLoginLoading(false);
             refreshAllViews();
         }
     });
 }
 
 function refreshAllViews() {
-    setupAuthUI();
-    initializeSelectors();
-    renderEmployeeList();
-    updateActiveEmployeeUI();
-    generateTable();
-    renderHolidaysList();
-    const recapTab = document.getElementById("tab-recap");
-    if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
-        generateRecapTable();
+    // Gérer l'affichage de l'overlay de connexion
+    if (!state.currentUser) {
+        document.getElementById("login-overlay").style.display = "flex";
+    } else {
+        document.getElementById("login-overlay").style.display = "none";
+        setupAuthUI();
+        initializeSelectors();
+        renderEmployeeList();
+        updateActiveEmployeeUI();
+        generateTable();
+        renderHolidaysList();
+        if (state.activeEmployeeId) {
+            const rattrapageCard = document.getElementById("rattrapage-card");
+            if (rattrapageCard) rattrapageCard.style.display = "block";
+        }
+        const recapTab = document.getElementById("tab-recap");
+        if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
+            generateRecapTable();
+        }
     }
+    lucide.createIcons();
 }
 
 function saveStateToLocalStorage() {
@@ -4530,6 +4558,14 @@ document.getElementById("login-form").addEventListener("submit", (e) => {
     const userField = document.getElementById("login-username").value.trim();
     const passField = document.getElementById("login-password").value.trim();
     
+    // Si Firebase n'est pas encore prêt, attendre et réessayer
+    if (!isFirebaseInitialized) {
+        const errorEl = document.getElementById("login-error");
+        errorEl.textContent = "⏳ La base de données est encore en cours de chargement. Patientez quelques secondes et réessayez.";
+        errorEl.style.display = "block";
+        return;
+    }
+    
     const user = state.users.find(u => u.username === userField && u.password === passField);
     
     if (user) {
@@ -4538,9 +4574,18 @@ document.getElementById("login-form").addEventListener("submit", (e) => {
         document.getElementById("login-overlay").style.display = "none";
         document.getElementById("login-error").style.display = "none";
         setupAuthUI();
-        generateTable(); // Refresh table to apply closure rules
+        renderEmployeeList();
+        updateActiveEmployeeUI();
+        generateTable();
+        renderHolidaysList();
+        if (state.activeEmployeeId) {
+            const rattrapageCard = document.getElementById("rattrapage-card");
+            if (rattrapageCard) rattrapageCard.style.display = "block";
+        }
     } else {
-        document.getElementById("login-error").style.display = "block";
+        const errorEl = document.getElementById("login-error");
+        errorEl.textContent = "Identifiants incorrects. Vérifiez votre nom d'utilisateur et mot de passe.";
+        errorEl.style.display = "block";
     }
 });
 
