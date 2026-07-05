@@ -427,55 +427,130 @@ document.addEventListener("DOMContentLoaded", () => {
     lucide.createIcons();
 });
 
+let isFirebaseInitialized = false;
+
 function loadStateFromLocalStorage() {
-    const savedState = localStorage.getItem("pointage_pro_state");
-    if (savedState) {
+    // 1. Charger l'état local (préférences de l'utilisateur courant)
+    const localSavedState = localStorage.getItem("pointage_pro_state_local");
+    if (localSavedState) {
         try {
-            state = JSON.parse(savedState);
-            // Assurer que l'année et le mois courants sont valides
-            if (state.currentYear === undefined) state.currentYear = new Date().getFullYear();
-            if (state.currentMonth === undefined) state.currentMonth = new Date().getMonth();
-            if (!state.customHolidays) state.customHolidays = {};
-            if (!state.dayDetails) state.dayDetails = {};
-            if (!state.rattrapages) state.rattrapages = {};
-            if (!state.absencePeriods) state.absencePeriods = {};
-            if (!state.companyStructure) state.companyStructure = {};
-            if (!state.users) state.users = [];
-            if (!state.closedMonths) state.closedMonths = [];
-            
-            // Create default admin if no users exist
-            if (state.users.length === 0) {
-                state.users.push({
-                    id: "usr-" + Date.now(),
-                    username: "admin",
-                    password: "admin",
-                    role: "ADMIN"
-                });
-            }
-            
-            if (!state.absenceAlerts) {
-                state.absenceAlerts = { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
-            }
-            // Migration : assurer que tous les employés ont le taux de transport par défaut (30 000 FCFA)
-            const DEFAULT_TRANSPORT = 30000;
-            if (state.employees) {
-                state.employees.forEach(emp => {
-                    if (!emp.tauxTransport || emp.tauxTransport === 0) {
-                        emp.tauxTransport = DEFAULT_TRANSPORT;
-                    }
-                });
-            }
+            const local = JSON.parse(localSavedState);
+            state.currentUser = local.currentUser || null;
+            state.activeEmployeeId = local.activeEmployeeId || null;
+            state.currentYear = local.currentYear !== undefined ? local.currentYear : new Date().getFullYear();
+            state.currentMonth = local.currentMonth !== undefined ? local.currentMonth : new Date().getMonth();
         } catch (e) {
-            console.error("Erreur lors de la lecture du LocalStorage", e);
-            createDemoData();
+            console.error("Erreur locale", e);
         }
     } else {
-        createDemoData();
+        state.currentYear = new Date().getFullYear();
+        state.currentMonth = new Date().getMonth();
+    }
+
+    // Initialisation des propriétés par défaut
+    if (!state.customHolidays) state.customHolidays = {};
+    if (!state.dayDetails) state.dayDetails = {};
+    if (!state.rattrapages) state.rattrapages = {};
+    if (!state.absencePeriods) state.absencePeriods = {};
+    if (!state.companyStructure) state.companyStructure = {};
+    if (!state.users) state.users = [];
+    if (!state.closedMonths) state.closedMonths = [];
+    if (!state.employees) state.employees = [];
+    if (!state.pointages) state.pointages = {};
+    if (!state.absenceAlerts) state.absenceAlerts = { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
+
+    // 2. Migration des anciennes données si nécessaire
+    const oldSavedState = localStorage.getItem("pointage_pro_state");
+
+    // 3. Connexion à Firebase
+    const dbRef = database.ref('globalState');
+    
+    dbRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Mettre à jour l'état global avec les données Firebase
+            state.employees = data.employees || [];
+            state.pointages = data.pointages || {};
+            state.customHolidays = data.customHolidays || {};
+            state.dayDetails = data.dayDetails || {};
+            state.rattrapages = data.rattrapages || {};
+            state.absencePeriods = data.absencePeriods || {};
+            state.companyStructure = data.companyStructure || {};
+            state.users = data.users || [];
+            state.closedMonths = data.closedMonths || [];
+            state.absenceAlerts = data.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
+            
+            isFirebaseInitialized = true;
+            refreshAllViews();
+        } else {
+            // Firebase est vide, on migre l'ancien LocalStorage si présent
+            isFirebaseInitialized = true;
+            if (oldSavedState) {
+                try {
+                    const oldState = JSON.parse(oldSavedState);
+                    state.employees = oldState.employees || [];
+                    state.pointages = oldState.pointages || {};
+                    state.customHolidays = oldState.customHolidays || {};
+                    state.dayDetails = oldState.dayDetails || {};
+                    state.rattrapages = oldState.rattrapages || {};
+                    state.absencePeriods = oldState.absencePeriods || {};
+                    state.companyStructure = oldState.companyStructure || {};
+                    state.users = oldState.users || [];
+                    state.closedMonths = oldState.closedMonths || [];
+                    state.absenceAlerts = oldState.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
+                    
+                    if (state.users.length === 0) {
+                        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "admin", role: "ADMIN" });
+                    }
+                    saveStateToLocalStorage();
+                } catch(e) {}
+            } else {
+                createDemoData();
+            }
+            refreshAllViews();
+        }
+    });
+}
+
+function refreshAllViews() {
+    setupAuthUI();
+    initializeSelectors();
+    renderEmployeeList();
+    updateActiveEmployeeUI();
+    generateTable();
+    renderHolidaysList();
+    const recapTab = document.getElementById("tab-recap");
+    if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
+        generateRecapTable();
     }
 }
 
 function saveStateToLocalStorage() {
-    localStorage.setItem("pointage_pro_state", JSON.stringify(state));
+    // 1. Sauvegarder les données locales
+    const localState = {
+        currentUser: state.currentUser,
+        activeEmployeeId: state.activeEmployeeId,
+        currentYear: state.currentYear,
+        currentMonth: state.currentMonth
+    };
+    localStorage.setItem("pointage_pro_state_local", JSON.stringify(localState));
+    
+    // 2. Synchroniser avec Firebase
+    if (isFirebaseInitialized) {
+        const globalState = {
+            employees: state.employees || [],
+            pointages: state.pointages || {},
+            customHolidays: state.customHolidays || {},
+            dayDetails: state.dayDetails || {},
+            rattrapages: state.rattrapages || {},
+            absencePeriods: state.absencePeriods || {},
+            companyStructure: state.companyStructure || {},
+            users: state.users || [],
+            closedMonths: state.closedMonths || [],
+            absenceAlerts: state.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 }
+        };
+        database.ref('globalState').set(globalState);
+    }
 }
 
 function createDemoData() {
@@ -487,18 +562,16 @@ function createDemoData() {
     state.activeEmployeeId = "emp-1";
     state.currentYear = new Date().getFullYear();
     state.currentMonth = new Date().getMonth();
+    
+    if (state.users.length === 0) {
+        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "admin", role: "ADMIN" });
+    }
+
     state.pointages = {
         "emp-1": {
-            // Exemple de données pré-remplies pour tester
             [`${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}-01`]: {
                 arrivee: "07:30", pause: "12:00", reprise: "13:00", fin: "17:30",
-                nuitActive: false,
-                nuitDebut: "", nuitPause: "", nuitReprise: "", nuitFin: ""
-            },
-            [`${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}-02`]: {
-                arrivee: "08:00", pause: "12:15", reprise: "13:15", fin: "17:00",
-                nuitActive: true,
-                nuitDebut: "21:00", nuitPause: "00:00", nuitReprise: "01:00", nuitFin: "05:00"
+                nuitActive: false, nuitDebut: "", nuitPause: "", nuitReprise: "", nuitFin: ""
             }
         }
     };
