@@ -492,7 +492,7 @@ function loadStateFromLocalStorage() {
             }
             refreshAllViews();
         }
-    }, 6000);
+    }, 10000);
     
     dbRef.on('value', (snapshot) => {
         clearTimeout(firebaseTimeout);
@@ -565,6 +565,9 @@ function loadStateFromLocalStorage() {
 }
 
 function refreshAllViews() {
+    // Ne pas rafraichir le tableau si l'utilisateur est en train de taper
+    if (isTypingInTable) return;
+    
     // Gérer l'affichage de l'overlay de connexion
     if (!state.currentUser) {
         document.getElementById("login-overlay").style.display = "flex";
@@ -588,8 +591,13 @@ function refreshAllViews() {
     lucide.createIcons();
 }
 
+// Debounce pour Firebase : évite d'envoyer à chaque frappe
+let firebaseSaveTimer = null;
+// Flag pour détecter si l'utilisateur tape dans le tableau de pointage
+let isTypingInTable = false;
+
 function saveStateToLocalStorage() {
-    // 1. Sauvegarder les données locales
+    // 1. Sauvegarder les données locales (toujours immédiat)
     const localState = {
         currentUser: state.currentUser,
         activeEmployeeId: state.activeEmployeeId,
@@ -598,21 +606,24 @@ function saveStateToLocalStorage() {
     };
     localStorage.setItem("pointage_pro_state_local", JSON.stringify(localState));
     
-    // 2. Synchroniser avec Firebase
+    // 2. Synchroniser avec Firebase avec debounce de 1500ms
     if (isFirebaseInitialized) {
-        const globalState = {
-            employees: state.employees || [],
-            pointages: state.pointages || {},
-            customHolidays: state.customHolidays || {},
-            dayDetails: state.dayDetails || {},
-            rattrapages: state.rattrapages || {},
-            absencePeriods: state.absencePeriods || {},
-            companyStructure: state.companyStructure || {},
-            users: state.users || [],
-            closedMonths: state.closedMonths || [],
-            absenceAlerts: state.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 }
-        };
-        database.ref('globalState').set(globalState);
+        clearTimeout(firebaseSaveTimer);
+        firebaseSaveTimer = setTimeout(() => {
+            const globalState = {
+                employees: state.employees || [],
+                pointages: state.pointages || {},
+                customHolidays: state.customHolidays || {},
+                dayDetails: state.dayDetails || {},
+                rattrapages: state.rattrapages || {},
+                absencePeriods: state.absencePeriods || {},
+                companyStructure: state.companyStructure || {},
+                users: state.users || [],
+                closedMonths: state.closedMonths || [],
+                absenceAlerts: state.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 }
+            };
+            database.ref('globalState').set(globalState);
+        }, 1500);
     }
 }
 
@@ -2792,6 +2803,7 @@ function attachTableInputEvents() {
     allInputs.forEach((input, idx) => {
         input.addEventListener("focus", function() {
             this.select();
+            isTypingInTable = true;
         });
 
         input.addEventListener("blur", function() {
@@ -2799,6 +2811,12 @@ function attachTableInputEvents() {
             if (rawVal === "") {
                 this.classList.remove("invalid-input");
                 saveInputValue(this);
+                // Libérer le flag seulement si aucun autre champ du tableau n'est focalisé
+                setTimeout(() => {
+                    if (!document.activeElement || !document.activeElement.classList.contains("time-input")) {
+                        isTypingInTable = false;
+                    }
+                }, 50);
                 return;
             }
             
@@ -2811,6 +2829,12 @@ function attachTableInputEvents() {
             }
             
             saveInputValue(this);
+            // Libérer le flag seulement si aucun autre champ du tableau n'est focalisé
+            setTimeout(() => {
+                if (!document.activeElement || !document.activeElement.classList.contains("time-input")) {
+                    isTypingInTable = false;
+                }
+            }, 50);
         });
 
         input.addEventListener("input", function() {
