@@ -471,10 +471,31 @@ function loadStateFromLocalStorage() {
     // 2. Migration des anciennes données si nécessaire
     const oldSavedState = localStorage.getItem("pointage_pro_state");
 
-    // 3. Connexion à Firebase
+    // 3. Connexion à Firebase avec timeout de sécurité
     const dbRef = database.ref('globalState');
+
+    // Timeout : si Firebase ne répond pas en 6 secondes, on utilise le mode local
+    const firebaseTimeout = setTimeout(() => {
+        if (!isFirebaseInitialized) {
+            console.warn("Firebase timeout - mode local activé");
+            isFirebaseInitialized = true;
+            // Ajouter admin de secours si aucun utilisateur
+            if (state.users.length === 0) {
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
+            }
+            showLoginLoading(false);
+            // Afficher un avertissement discret
+            const loadingDiv = document.getElementById("firebase-loading-msg");
+            if (loadingDiv) {
+                loadingDiv.innerHTML = `<span style="color:#f59e0b">⚠️ Mode hors-ligne. Vérifiez votre connexion Internet.</span>`;
+                loadingDiv.style.display = "flex";
+            }
+            refreshAllViews();
+        }
+    }, 6000);
     
     dbRef.on('value', (snapshot) => {
+        clearTimeout(firebaseTimeout);
         const data = snapshot.val();
         if (data) {
             // Mettre à jour l'état global avec les données Firebase
@@ -499,7 +520,6 @@ function loadStateFromLocalStorage() {
             refreshAllViews();
         } else {
             // Firebase est vide, on migre l'ancien LocalStorage si présent
-            isFirebaseInitialized = true;
             if (oldSavedState) {
                 try {
                     const oldState = JSON.parse(oldSavedState);
@@ -526,6 +546,21 @@ function loadStateFromLocalStorage() {
             showLoginLoading(false);
             refreshAllViews();
         }
+    }, (error) => {
+        // Gestionnaire d'erreur Firebase
+        clearTimeout(firebaseTimeout);
+        console.error("Erreur Firebase:", error);
+        isFirebaseInitialized = true;
+        if (state.users.length === 0) {
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
+        }
+        showLoginLoading(false);
+        const loadingDiv = document.getElementById("firebase-loading-msg");
+        if (loadingDiv) {
+            loadingDiv.innerHTML = `<span style="color:#ef4444">❌ Erreur de connexion à la base de données (${error.code}). Vérifiez vos règles Firebase.</span>`;
+            loadingDiv.style.display = "flex";
+        }
+        refreshAllViews();
     });
 }
 
