@@ -5,7 +5,8 @@ const firebaseConfig = {
   projectId: "pointage-heures-455a1",
   storageBucket: "pointage-heures-455a1.firebasestorage.app",
   messagingSenderId: "674815364408",
-  appId: "1:674815364408:web:c5bc9597b2a25823a605cd"
+  appId: "1:674815364408:web:c5bc9597b2a25823a605cd",
+  databaseURL: "https://pointage-heures-455a1-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
 // Initialisation de Firebase avec la version Compat (pour compatibilité avec app.js)
