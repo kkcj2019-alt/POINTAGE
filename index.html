@@ -165,9 +165,7 @@
             <!-- Top Dashboard Bar -->
             <header class="top-bar">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <button id="toggle-sidebar-btn" class="btn-text" title="Afficher/Masquer la liste des employés" style="padding: 8px;">
-                        <i data-lucide="menu" style="width: 24px; height: 24px; color: var(--text-primary);"></i>
-                    </button>
+                    <!-- Bouton sidebar toggle supprimé, sidebar retirée -->
                     <div class="header-info">
                         <h1 id="active-employee-name">Sélectionnez un employé</h1>
                         <p id="active-employee-matricule" class="employee-matricule-header"></p>
@@ -283,6 +281,12 @@
                 <button class="tab-btn active" data-tab="tab-pointage">
                     <i data-lucide="calendar-check"></i> Pointage
                 </button>
+                <button class="tab-btn" data-tab="tab-suivi">
+                    <i data-lucide="check-square"></i> Suivi Présence
+                </button>
+                <button class="tab-btn" data-tab="tab-rapport-presence">
+                    <i data-lucide="file-text"></i> Rapport Présence
+                </button>
                 <button class="tab-btn" data-tab="tab-synthese">
                     <i data-lucide="pie-chart"></i> Synthèse Détaillée
                 </button>
@@ -292,10 +296,35 @@
                 <button class="tab-btn" data-tab="tab-recap">
                     <i data-lucide="layout-dashboard"></i> Tableau de Bord
                 </button>
+                <button class="tab-btn" data-tab="tab-parametres">
+                    <i data-lucide="database"></i> Employés & Paramètres
+                </button>
             </div>
 
             <!-- TAB 1: POINTAGE -->
             <div id="tab-pointage" class="tab-content active">
+
+            <!-- Barre principale : Filtres Fonctions + Recherche Rapide -->
+            <div style="display:flex; align-items:center; gap:12px; padding: 12px 24px 0; flex-wrap:wrap;">
+                <!-- Recherche rapide travailleur -->
+                <div style="position:relative; min-width:220px;">
+                    <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-muted); pointer-events:none;"></i>
+                    <input type="text" id="pointage-search-input"
+                        placeholder="Chercher un travailleur..."
+                        autocomplete="off"
+                        oninput="filterPointageSearch(this.value)"
+                        style="padding:7px 10px 7px 32px; border:1px solid var(--border-color); border-radius:var(--border-radius-md); background:var(--bg-card); color:var(--text-primary); font-size:0.82rem; width:100%; outline:none; transition:border-color 0.2s;">
+                    <!-- Résultats dropdown -->
+                    <div id="pointage-search-results" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-md); box-shadow:var(--shadow-md); z-index:200; max-height:220px; overflow-y:auto;"></div>
+                </div>
+
+                <!-- Filtres par Fonction -->
+                <div id="pointage-fonctions-bar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; flex:1;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-right:4px;">Fonction :</span>
+                    <!-- Rempli dynamiquement par JS -->
+                </div>
+            </div>
+
 
             <!-- KPI Cards Summary -->
             <section class="kpi-container">
@@ -436,6 +465,168 @@
 
             </div> <!-- End of tab-pointage -->
             
+            <!-- TAB SUIVI PRESENCE (DAILY POINTAGE ONLY) -->
+            <div id="tab-suivi" class="tab-content">
+                <div class="section-title" style="margin-top: 10px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="check-square"></i> Pointage Journalier Rapide
+                </div>
+
+                <!-- Filtre par Département -->
+                <div style="margin-top: 10px; margin-bottom: 15px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Filtrer par Département :</label>
+                    <div id="suivi-depts-filter" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <div class="top-controls" style="margin-top: 15px;">
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Date de pointage</label>
+                            <input type="date" id="suivi-date-input" class="modern-input" onchange="renderSuiviJournalier()">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; display: none;">
+                            <button class="btn btn-primary" onclick="renderSuiviJournalier()">
+                                <i data-lucide="refresh-cw"></i> Actualiser
+                            </button>
+                        </div>
+                        <div style="flex-grow: 1;"></div>
+                        <div class="form-group" style="margin-bottom: 0; display: flex; gap: 10px;">
+                            <button class="btn btn-success" onclick="markBulkPresence(true)">
+                                <i data-lucide="check-circle"></i> Marquer Présents
+                            </button>
+                            <button class="btn btn-danger" onclick="markBulkPresence(false)">
+                                <i data-lucide="x-circle"></i> Marquer Absents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 1 : À POINTER -->
+                <h3 style="margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--accent-day); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="clock"></i> Travailleurs à pointer (<span id="suivi-pending-count">0</span>)
+                </h3>
+                <div class="table-container" style="margin-top: 10px;">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;"><input type="checkbox" id="suivi-select-all" onchange="toggleSuiviSelectAll(this)"></th>
+                                <th>Matricule</th>
+                                <th>Employé</th>
+                                <th>Département</th>
+                                <th>Statut Actuel</th>
+                                <th>Motif (Si absent)</th>
+                                <th>Action Rapide</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suivi-table-body">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SECTION 2 : DÉJÀ POINTÉS -->
+                <h3 style="margin-top: 35px; margin-bottom: 10px; font-size: 1rem; color: var(--accent-total); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="check-circle-2"></i> Travailleurs déjà pointés pour ce jour (<span id="suivi-done-count">0</span>)
+                </h3>
+                <div class="table-container" style="margin-top: 10px; margin-bottom: 30px;">
+                    <table class="modern-table" style="opacity: 0.9;">
+                        <thead>
+                            <tr>
+                                <th>Matricule</th>
+                                <th>Employé</th>
+                                <th>Département</th>
+                                <th>Statut Enregistré</th>
+                                <th>Motif (Si absent)</th>
+                                <th>Modifier le Pointage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suivi-table-done-body">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </div> <!-- End of tab-suivi -->
+
+            <!-- TAB RAPPORT PRESENCE (REPORT ONLY) -->
+            <div id="tab-rapport-presence" class="tab-content">
+                <div class="section-title" style="margin-top: 10px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="file-bar-chart"></i> Rapport de Présence sur Période
+                </div>
+                
+                <div class="top-controls" style="margin-top: 15px;">
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Du</label>
+                            <input type="date" id="suivi-report-start" class="modern-input" onchange="generatePresenceReport()">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Au</label>
+                            <input type="date" id="suivi-report-end" class="modern-input" onchange="generatePresenceReport()">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Employé (Optionnel)</label>
+                            <input list="suivi-report-emp-list" id="suivi-report-emp" class="modern-input" placeholder="Tous les employés (tapez pour chercher)" style="width: 280px;" oninput="generatePresenceReport()">
+                            <datalist id="suivi-report-emp-list">
+                                <!-- Rempli dynamiquement -->
+                            </datalist>
+                        </div>
+                        <!-- Bouton 'Générer' masqué car l'actualisation est maintenant en temps réel -->
+                        <div class="form-group" style="margin-bottom: 0; display: none;">
+                            <button class="btn btn-primary" onclick="generatePresenceReport()">
+                                <i data-lucide="search"></i> Générer Rapport
+                            </button>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="printPresenceReport()">
+                                <i data-lucide="print"></i> Imprimer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons de filtre rapide département pour rapport -->
+                <div id="rapport-depts-filter" style="display: flex; gap: 8px; margin-top: 15px; margin-bottom: 5px; flex-wrap: wrap;"></div>
+
+                <!-- Boutons de filtre rapide de colonnes -->
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-secondary active-view-btn" id="view-mixte-btn" onclick="setReportView('mixte')">
+                        <i data-lucide="layout-grid"></i> Vue Mixte
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="view-absence-btn" onclick="setReportView('absence')">
+                        <i data-lucide="user-x"></i> Détail Absence
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="view-presence-btn" onclick="setReportView('presence')">
+                        <i data-lucide="user-check"></i> Détail Présence
+                    </button>
+                </div>
+
+                <div class="table-container" style="margin-top: 20px; margin-bottom: 30px;">
+                    <div id="print-report-container">
+                        <div class="print-header-info" style="display: none; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                            <h2 style="margin: 0; font-family: var(--font-heading);">Rapport de Présence Journalier</h2>
+                            <p style="margin: 5px 0 0 0; color: #666;" id="print-report-dates"></p>
+                            <p style="margin: 5px 0 0 0; color: #333; font-weight: 600;" id="print-report-emp-name"></p>
+                        </div>
+                        <table class="modern-table" id="suivi-report-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Employé</th>
+                                    <th class="col-expected">Jours Attendus</th>
+                                    <th class="col-present">Jours Présents</th>
+                                    <th class="col-absences" style="min-width: 200px;">Détail des Absences</th>
+                                    <th>Taux de Présence</th>
+                                    <th>Observation</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suivi-report-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End of tab-rapport-presence -->
+
             <!-- TAB 2: SYNTHÈSE DÉTAILLÉE -->
             <div id="tab-synthese" class="tab-content">
                 <div class="card shadow-sm" style="background: var(--bg-card); border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px;">
@@ -680,10 +871,72 @@
                 </div>
             </div>
 
+            <!-- TAB EMPLOYÉS & PARAMÈTRES -->
+            <div id="tab-parametres" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; margin: 0;">Base de Données Employés</h2>
+                        <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" onclick="openStructureConfigModal()">
+                            <i data-lucide="building-2"></i> Gérer Depts &amp; Fonctions
+                        </button>
+                        <button id="add-emp-params-btn" class="btn btn-primary" onclick="document.getElementById('add-employee-modal').classList.add('active')">
+                            <i data-lucide="plus"></i> Ajouter un Employé
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Barre de recherche + filtre dept -->
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: var(--bg-card); padding: 12px 16px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                    <div style="position: relative; flex: 1; min-width: 280px;">
+                        <i data-lucide="search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
+                        <input type="text" id="params-search" class="search-pill-input" placeholder="Rechercher par nom ou matricule..." oninput="renderParamsTable()" style="width: 100%; padding: 10px 16px 10px 42px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.9rem; outline: none; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                    </div>
+                    <select id="params-dept-filter" style="min-width: 180px; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.9rem; outline: none; transition: all 0.2s;" onchange="renderParamsTable()">
+                        <option value="all">Tous les départements</option>
+                        <!-- Rempli dynamiquement -->
+                    </select>
+                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
+                        <input type="checkbox" id="params-show-inactive" onchange="renderParamsTable()"> Voir inactifs
+                    </label>
+                </div>
+
+                <div class="table-container">
+                    <table class="modern-table" id="params-employees-table">
+                        <thead>
+                            <tr>
+                                <th>Matricule</th>
+                                <th>Nom Complet</th>
+                                <th>Fonction</th>
+                                <th>Département</th>
+                                <th>Date Début</th>
+                                <th>Transport</th>
+                                <th>Statut</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="params-employees-body">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Résumé par département -->
+                <h3 style="margin-top: 35px; margin-bottom: 15px; font-size: 1.1rem; font-family: var(--font-heading);">
+                    <i data-lucide="pie-chart" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;"></i> Répartition par Département
+                </h3>
+                <div id="params-dept-summary" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <!-- Rempli dynamiquement -->
+                </div>
+            </div> <!-- End tab-parametres -->
+
         </main>
     </div>
 
-    <!-- Add Employee Modal -->
+    <!-- TAB PARAMETRES (injecté dans main via JS car hors main) -->
+
     <div id="add-employee-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -704,6 +957,10 @@
                     <select id="employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
                         <option value="">Sélectionnez une fonction...</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label for="employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="date" id="employee-start-date-input" required class="modern-input">
                 </div>
                 <div class="form-group">
                     <label for="employee-departement-input">Département</label>
@@ -755,6 +1012,10 @@
                     <select id="edit-employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
                         <option value="">Sélectionnez une fonction...</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="date" id="edit-employee-start-date-input" required class="modern-input">
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-departement-input">Département</label>

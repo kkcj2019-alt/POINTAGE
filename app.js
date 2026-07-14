@@ -578,14 +578,23 @@ function refreshAllViews() {
         renderEmployeeList();
         updateActiveEmployeeUI();
         generateTable();
+        renderPointageFonctionsBar();
         renderHolidaysList();
         if (state.activeEmployeeId) {
             const rattrapageCard = document.getElementById("rattrapage-card");
             if (rattrapageCard) rattrapageCard.style.display = "block";
         }
-        const recapTab = document.getElementById("tab-recap");
-        if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
-            generateRecapTable();
+        
+        // Restaurer l'onglet actif
+        const savedTab = localStorage.getItem("activeTab");
+        if (savedTab) {
+            const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+            if (btn) btn.click();
+        } else {
+            const recapTab = document.getElementById("tab-recap");
+            if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
+                generateRecapTable();
+            }
         }
     }
     lucide.createIcons();
@@ -987,8 +996,17 @@ function setupEventListeners() {
             const targetId = btn.getAttribute("data-tab");
             document.getElementById(targetId).classList.add("active");
             
+            // Sauvegarder l'onglet actif
+            localStorage.setItem("activeTab", targetId);
+            
             if (targetId === "tab-recap") {
                 generateRecapTable();
+            } else if (targetId === "tab-suivi") {
+                initSuiviTab();
+            } else if (targetId === "tab-rapport-presence") {
+                initRapportTab();
+            } else if (targetId === "tab-parametres") {
+                initParametresTab();
             }
         });
     });
@@ -1170,16 +1188,13 @@ function setupEventListeners() {
         });
     }
 
-    // Structure Config Modal Events
-    const configStructureBtn = document.getElementById("config-structure-btn");
-    const structModal = document.getElementById("config-structure-modal");
-    if (configStructureBtn && structModal) {
-        configStructureBtn.addEventListener("click", () => {
-            selectedDeptConfig = null;
-            renderStructureConfigModal();
-            structModal.classList.add("active");
-        });
-    }
+    // Structure Config Modal Global Access
+    window.openStructureConfigModal = function() {
+        selectedDeptConfig = null;
+        renderStructureConfigModal();
+        const structModal = document.getElementById("config-structure-modal");
+        if (structModal) structModal.classList.add("active");
+    };
 
     // Add Dept
     const addDeptBtn = document.getElementById("add-dept-btn");
@@ -1329,6 +1344,7 @@ function setupEventListeners() {
             }
             
             const tauxTransportVal = document.getElementById("employee-transport-input").value.trim();
+            const startDateVal = document.getElementById("employee-start-date-input").value;
             const newEmp = {
                 id: "emp-" + Date.now(),
                 matricule: matricule,
@@ -1336,7 +1352,8 @@ function setupEventListeners() {
                 role: role || "Employé",
                 departement: departement || "Non Défini",
                 isRendement: document.getElementById("employee-rendement-cb").checked,
-                tauxTransport: tauxTransportVal ? parseFloat(tauxTransportVal) : 30000
+                tauxTransport: tauxTransportVal ? parseFloat(tauxTransportVal) : 30000,
+                startDate: startDateVal || null
             };
             state.employees.push(newEmp);
             state.activeEmployeeId = newEmp.id;
@@ -1378,6 +1395,7 @@ function setupEventListeners() {
                 state.employees[empIndex].isRendement = document.getElementById("edit-employee-rendement-cb").checked;
                 const editTauxVal = document.getElementById("edit-employee-transport-input").value.trim();
                 state.employees[empIndex].tauxTransport = editTauxVal ? parseFloat(editTauxVal) : 0;
+                state.employees[empIndex].startDate = document.getElementById("edit-employee-start-date-input").value || null;
                 
                 if (!isActive) {
                     state.employees[empIndex].inactiveFrom = {
@@ -1583,6 +1601,10 @@ function renderEmployeeList() {
     // Initialise les icônes dans la liste générée
     lucide.createIcons();
     toggleBulkActionBar();
+    // Mettre à jour les boutons fonction dans le pointage
+    if (typeof renderPointageFonctionsBar === "function") {
+        renderPointageFonctionsBar();
+    }
 }
 
 function toggleBulkActionBar() {
@@ -1601,6 +1623,7 @@ function openEditModal(emp) {
     populateEmployeeFormSelects(emp.departement || "", emp.role || "", "edit");
     document.getElementById("edit-employee-rendement-cb").checked = emp.isRendement || false;
     document.getElementById("edit-employee-transport-input").value = emp.tauxTransport > 0 ? emp.tauxTransport : "";
+    document.getElementById("edit-employee-start-date-input").value = emp.startDate || "";
     
     const activeCb = document.getElementById("edit-employee-active-cb");
     const inactGroup = document.getElementById("inactivation-month-group");
@@ -1659,6 +1682,18 @@ function updateActiveEmployeeUI() {
         title.textContent = "Sélectionnez un employé";
         if (matriculeEl) matriculeEl.textContent = "";
     }
+}
+
+// Sélectionner un employé par ID (utilisé par les boutons fonction)
+function selectEmployee(empId) {
+    state.activeEmployeeId = empId;
+    saveStateToLocalStorage();
+    renderEmployeeList();
+    updateActiveEmployeeUI();
+    generateTable();
+    renderRattrapagesDashboard();
+    const rattrapageCard = document.getElementById("rattrapage-card");
+    if (rattrapageCard) rattrapageCard.style.display = "block";
 }
 
 function deleteEmployee(id) {
@@ -2332,6 +2367,19 @@ function generateRecapTable() {
             const isWeekend = dayName.startsWith("sam") || dayName.startsWith("dim");
             const isHoliday = !!holidays[dateKey];
             const isWorkingDay = !isWeekend && !isHoliday;
+            const currentDateStr = `${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const currentObjDate = new Date(currentDateStr);
+            currentObjDate.setHours(0,0,0,0);
+            
+            // Un jour ouvrable est attendu s'il est >= à la date d'embauche (ou si pas de date d'embauche)
+            let isExpectedWorkingDay = isWorkingDay;
+            if (emp.startDate) {
+                const startD = new Date(emp.startDate);
+                startD.setHours(0,0,0,0);
+                if (currentObjDate < startD) {
+                    isExpectedWorkingDay = false;
+                }
+            }
             
             const storedData = empPointage[dateKey];
             const data = storedData ? { ...storedData } : {
@@ -2343,8 +2391,8 @@ function generateRecapTable() {
             if (!storedData || !data.status) {
                 const hasPointage = !!(data.arrivee || data.pause || data.reprise || data.fin || data.nuitDebut);
                 if (hasPointage) data.status = "present";
-                else if (isWorkingDay) data.status = "absent";
-                else data.status = "present";
+                else if (isExpectedWorkingDay) data.status = "absent";
+                else data.status = "present"; // Considéré comme présent pour ne pas pénaliser si avant embauche
             }
             
             const detail = empDetails[dateKey] || { note: "", isEvent: false, eventName: "", eventWorked: true };
@@ -4745,3 +4793,840 @@ if (closeMonthBtn) {
         }
     });
 }
+
+// ==========================================================================
+// XX. MODULE SUIVI PRÉSENCE JOURNALIÈRE
+// ==========================================================================
+
+function getSortedEmployees() {
+    return [...state.employees].sort((a, b) => {
+        const matA = (a.matricule || "").toLowerCase();
+        const matB = (b.matricule || "").toLowerCase();
+        const numA = parseInt(matA.replace(/[^0-9]/g, ''), 10) || 0;
+        const numB = parseInt(matB.replace(/[^0-9]/g, ''), 10) || 0;
+        
+        if (numA !== numB) return numA - numB;
+        return matA.localeCompare(matB, 'fr', { numeric: true });
+    });
+}
+
+let pointageSelectedRole = "all"; // "all" ou nom de fonction
+let suiviSelectedDept = "all";
+let rapportSelectedDept = "all";
+
+// === FILTRE PAR FONCTION DANS LE POINTAGE ===
+function renderPointageFonctionsBar() {
+    const bar = document.getElementById("pointage-fonctions-bar");
+    if (!bar) return;
+
+    // Collecter toutes les fonctions des employés actifs
+    const rolesSet = new Set();
+    state.employees.forEach(emp => {
+        if (isEmployeeActive(emp)) {
+            rolesSet.add((emp.role || "Non Défini").trim());
+        }
+    });
+
+    const roles = Array.from(rolesSet).sort();
+
+    // Construire les boutons
+    const span = bar.querySelector("span");
+    // Supprimer les anciens boutons (garder le label)
+    Array.from(bar.children).forEach(el => {
+        if (el.tagName === "BUTTON") el.remove();
+    });
+
+    // Bouton "Tous"
+    const allBtn = document.createElement("button");
+    allBtn.className = `btn btn-sm ${pointageSelectedRole === "all" ? "btn-primary" : "btn-secondary"}`;
+    allBtn.style.padding = "6px 14px";
+    allBtn.textContent = "Tous";
+    allBtn.onclick = () => {
+        pointageSelectedRole = "all";
+        renderPointageFonctionsBar();
+        // Sélectionner le premier employé visible
+        const sorted = getSortedEmployees().filter(e => isEmployeeActive(e));
+        if (sorted.length > 0) selectEmployee(sorted[0].id);
+    };
+    bar.appendChild(allBtn);
+
+    roles.forEach(role => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-sm ${pointageSelectedRole === role ? "btn-primary" : "btn-secondary"}`;
+        btn.style.padding = "6px 14px";
+        btn.textContent = role;
+        btn.onclick = () => {
+            pointageSelectedRole = role;
+            renderPointageFonctionsBar();
+            // Sélectionner le premier employé de cette fonction, par ordre de matricule
+            const empsInRole = getSortedEmployees().filter(e => isEmployeeActive(e) && (e.role || "Non Défini").trim() === role);
+            if (empsInRole.length > 0) {
+                selectEmployee(empsInRole[0].id);
+                showPointageNavForRole(role, empsInRole);
+            }
+        };
+        bar.appendChild(btn);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function showPointageNavForRole(role, emps) {
+    // Afficher un mini-navigateur sous la barre de fonctions pour changer d'employé
+    let nav = document.getElementById("pointage-role-nav");
+    if (!nav) {
+        nav = document.createElement("div");
+        nav.id = "pointage-role-nav";
+        nav.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; padding: 8px 24px 0; align-items:flex-start;";
+        // Insérer après le parent wrapper de la barre
+        const bar = document.getElementById("pointage-fonctions-bar");
+        const wrapper = bar.parentElement;
+        wrapper.insertAdjacentElement("afterend", nav);
+    }
+    nav.innerHTML = `<span style="font-size:0.7rem;color:var(--text-muted);font-weight:600;margin-right:4px;align-self:center;">${role} (${emps.length}) :</span>`;
+    emps.forEach(emp => {
+        const firstName = (emp.name || "").split(" ")[0]; // Premier mot du nom
+        const btn = document.createElement("button");
+        btn.className = `btn btn-sm ${emp.id === state.activeEmployeeId ? "btn-primary" : "btn-secondary"}`;
+        btn.style.cssText = "padding:5px 10px; font-size:0.78rem; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:60px;";
+        btn.innerHTML = `
+            <span style="font-weight:700; letter-spacing:0.03em;">${emp.matricule || '—'}</span>
+            <span style="font-size:0.65rem; opacity:0.85;">${firstName}</span>
+        `;
+        btn.title = emp.name;
+        btn.onclick = () => {
+            selectEmployee(emp.id);
+            // Mettre à jour l'actif visuellement
+            nav.querySelectorAll("button").forEach(b => {
+                b.className = `btn btn-sm btn-secondary`;
+            });
+            btn.className = `btn btn-sm btn-primary`;
+        };
+        nav.appendChild(btn);
+    });
+}
+
+// === RECHERCHE RAPIDE DANS LE POINTAGE ===
+function filterPointageSearch(query) {
+    const resultsDiv = document.getElementById("pointage-search-results");
+    if (!resultsDiv) return;
+
+    const q = query.trim().toLowerCase();
+    if (!q) {
+        resultsDiv.style.display = "none";
+        resultsDiv.innerHTML = "";
+        return;
+    }
+
+    const sortedEmps = getSortedEmployees().filter(e => isEmployeeActive(e));
+    const matches = sortedEmps.filter(e =>
+        e.name.toLowerCase().includes(q) ||
+        (e.matricule && e.matricule.toLowerCase().includes(q)) ||
+        (e.role && e.role.toLowerCase().includes(q))
+    );
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = `<div style="padding:10px 14px; color:var(--text-muted); font-size:0.82rem;">Aucun résultat</div>`;
+        resultsDiv.style.display = "block";
+        return;
+    }
+
+    resultsDiv.innerHTML = "";
+    matches.slice(0, 10).forEach(emp => {
+        const firstName = (emp.name || "").split(" ")[0];
+        const isActive = emp.id === state.activeEmployeeId;
+        const item = document.createElement("div");
+        item.style.cssText = `padding:8px 14px; cursor:pointer; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border-color); background:${isActive ? "var(--bg-input)" : "transparent"}; transition:background 0.15s;`;
+        item.innerHTML = `
+            <div style="flex-shrink:0; width:36px; height:36px; border-radius:50%; background:var(--accent-day); color:white; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700;">
+                ${firstName.charAt(0).toUpperCase()}
+            </div>
+            <div>
+                <div style="font-weight:700; font-size:0.85rem; color:var(--text-primary);">${emp.name}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${emp.matricule || '—'} · ${emp.role || 'N/A'}</div>
+            </div>
+        `;
+        item.onmouseenter = () => item.style.background = "var(--bg-input)";
+        item.onmouseleave = () => item.style.background = isActive ? "var(--bg-input)" : "transparent";
+        item.onclick = () => {
+            selectEmployee(emp.id);
+            // Fermer le dropdown
+            const input = document.getElementById("pointage-search-input");
+            if (input) input.value = "";
+            resultsDiv.style.display = "none";
+            resultsDiv.innerHTML = "";
+        };
+        resultsDiv.appendChild(item);
+    });
+
+    resultsDiv.style.display = "block";
+}
+
+// Fermer la recherche quand on clique ailleurs
+document.addEventListener("click", (e) => {
+    const searchWrapper = document.getElementById("pointage-search-input");
+    const resultsDiv = document.getElementById("pointage-search-results");
+    if (resultsDiv && searchWrapper && !searchWrapper.contains(e.target) && !resultsDiv.contains(e.target)) {
+        resultsDiv.style.display = "none";
+    }
+});
+
+function initSuiviTab() {
+    const today = new Date();
+    const dateInput = document.getElementById("suivi-date-input");
+    if (!dateInput.value) {
+        dateInput.value = formatDateISO(today);
+    }
+    
+    // Générer les boutons de filtre de département
+    renderSuiviDeptsFilter();
+    renderSuiviJournalier();
+}
+
+function renderSuiviDeptsFilter() {
+    const container = document.getElementById("suivi-depts-filter");
+    if (!container) return;
+    
+    // Récupérer tous les départements uniques des employés actifs
+    const dateInput = document.getElementById("suivi-date-input").value;
+    const [year, month] = dateInput.split('-').map(Number);
+    
+    const activeDepts = new Set();
+    state.employees.forEach(emp => {
+        if (isEmployeeActiveAtDate(emp, year, month - 1)) {
+            activeDepts.add((emp.departement || "Non Défini").trim());
+        }
+    });
+    
+    const depts = ["all", ...Array.from(activeDepts).sort()];
+    
+    container.innerHTML = "";
+    depts.forEach(dept => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-sm ${suiviSelectedDept === dept ? 'btn-primary' : 'btn-secondary'}`;
+        btn.style.padding = "6px 12px";
+        btn.textContent = dept === "all" ? "Tous" : dept;
+        btn.onclick = () => {
+            suiviSelectedDept = dept;
+            renderSuiviDeptsFilter();
+            renderSuiviJournalier();
+        };
+        container.appendChild(btn);
+    });
+}
+
+function initRapportTab() {
+    const today = new Date();
+    renderRapportDeptsFilter();
+
+    // Auto-remplir les dates du rapport (du 1er du mois sélectionné au jour actuel)
+    const reportStartInput = document.getElementById("suivi-report-start");
+    const reportEndInput = document.getElementById("suivi-report-end");
+    
+    if (!reportStartInput.value) {
+        const firstDay = new Date(state.currentYear, state.currentMonth, 1);
+        reportStartInput.value = formatDateISO(firstDay);
+    }
+    if (!reportEndInput.value) {
+        let endDate = today;
+        // Si le mois sélectionné est différent du mois actuel
+        if (today.getFullYear() !== state.currentYear || today.getMonth() !== state.currentMonth) {
+            endDate = new Date(state.currentYear, state.currentMonth + 1, 0);
+        }
+        reportEndInput.value = formatDateISO(endDate);
+    }
+    
+    // Remplir le datalist des employés pour le rapport
+    const empDatalist = document.getElementById("suivi-report-emp-list");
+    if (empDatalist) {
+        empDatalist.innerHTML = '';
+        const sortedEmps = getSortedEmployees();
+        sortedEmps.forEach(emp => {
+            const opt = document.createElement("option");
+            opt.value = `${emp.matricule} - ${emp.name}`;
+            opt.setAttribute("data-id", emp.id);
+            empDatalist.appendChild(opt);
+        });
+    }
+
+    generatePresenceReport();
+}
+
+function renderRapportDeptsFilter() {
+    const container = document.getElementById("rapport-depts-filter");
+    if (!container) return;
+    
+    const activeDepts = new Set();
+    state.employees.forEach(emp => {
+        activeDepts.add((emp.departement || "Non Défini").trim());
+    });
+    
+    const depts = ["all", ...Array.from(activeDepts).sort()];
+    
+    container.innerHTML = "";
+    depts.forEach(dept => {
+        const btn = document.createElement("button");
+        btn.className = `btn btn-sm ${rapportSelectedDept === dept ? 'btn-primary' : 'btn-secondary'}`;
+        btn.style.padding = "6px 12px";
+        btn.textContent = dept === "all" ? "Tous" : dept;
+        btn.onclick = () => {
+            rapportSelectedDept = dept;
+            renderRapportDeptsFilter();
+            generatePresenceReport();
+        };
+        container.appendChild(btn);
+    });
+}
+
+function renderSuiviJournalier() {
+    const tbody = document.getElementById("suivi-table-body");
+    const tbodyDone = document.getElementById("suivi-table-done-body");
+    if (!tbody || !tbodyDone) return;
+    
+    const dateInput = document.getElementById("suivi-date-input").value;
+    if (!dateInput) {
+        alert("Veuillez sélectionner une date.");
+        return;
+    }
+
+    const [year, month, day] = dateInput.split('-').map(Number);
+    const dateKey = dateInput;
+    
+    const sortedEmps = getSortedEmployees();
+    tbody.innerHTML = "";
+    tbodyDone.innerHTML = "";
+    
+    // Décoche "Select All"
+    const selectAllCb = document.getElementById("suivi-select-all");
+    if (selectAllCb) selectAllCb.checked = false;
+
+    let pendingCount = 0;
+    let doneCount = 0;
+
+    sortedEmps.forEach(emp => {
+        // Ignorer les inactifs
+        if (!isEmployeeActiveAtDate(emp, year, month - 1)) return; 
+        
+        // Filtrer par département sélectionné
+        if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) {
+            return;
+        }
+        
+        const pointageData = (state.pointages[emp.id] && state.pointages[emp.id][dateKey]) || {};
+        const status = pointageData.status; // statut précis
+        
+        const dayDetail = (state.dayDetails[emp.id] && state.dayDetails[emp.id][dateKey]) || {};
+        const motif = dayDetail.note || "";
+        
+        const isPresent = status === "present" || (pointageData.arrivee && pointageData.arrivee !== "");
+        const isPaidAbsence = ["conge", "malade", "accident", "faute_entreprise", "permission_payee"].includes(status);
+        
+        let statusBadge = `<span class="status-badge status-absent">Absent</span>`;
+        if (isPresent) {
+            statusBadge = `<span class="status-badge status-present">Présent</span>`;
+        } else if (isPaidAbsence) {
+            statusBadge = `<span class="status-badge status-conge" title="Absence payée">${status}</span>`;
+        } else if (status === "permission" || status === "autre") {
+            statusBadge = `<span class="status-badge status-permission">${status}</span>`;
+        }
+
+        const startDateFormatted = emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : "N/A";
+
+        // Déterminer s'il est "à pointer" (pas encore de statut défini pour ce jour) ou "déjà pointé"
+        const isPending = !status;
+
+        if (isPending) {
+            pendingCount++;
+            
+            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
+                placeholder="Non justifié" value="${motif}" 
+                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)">`;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><input type="checkbox" class="suivi-row-cb" value="${emp.id}"></td>
+                <td>${emp.matricule}</td>
+                <td style="font-weight: 500;">
+                    ${emp.name}
+                    <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
+                </td>
+                <td><span class="dept-badge">${emp.departement}</span></td>
+                <td><span class="status-badge" style="background:#94a3b8; color:#fff;">Non Pointé</span></td>
+                <td>${motifInput}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; justify-content: center;">
+                        <button class="btn btn-sm btn-success" onclick="setSuiviPresence('${emp.id}', '${dateKey}', 'present')" style="padding: 4px 8px;">
+                            <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Présent
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="setSuiviPresence('${emp.id}', '${dateKey}', 'absent')" style="padding: 4px 8px;">
+                            <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Absent
+                        </button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        } else {
+            doneCount++;
+            
+            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
+                placeholder="Non justifié" value="${motif}" 
+                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"
+                ${isPresent ? 'disabled opacity="0.5"' : ''}>`;
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${emp.matricule}</td>
+                <td style="font-weight: 500;">
+                    ${emp.name}
+                    <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
+                </td>
+                <td><span class="dept-badge">${emp.departement}</span></td>
+                <td id="suivi-status-${emp.id}">${statusBadge}</td>
+                <td>${motifInput}</td>
+                <td>
+                    <div style="display: flex; gap: 5px; justify-content: center;">
+                        <label style="cursor: pointer; padding: 4px 10px; border-radius: 4px; border: 1px solid #10b981; background: ${isPresent ? '#10b981' : 'transparent'}; color: ${isPresent ? '#fff' : '#10b981'}; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
+                            <input type="radio" name="status-done-${emp.id}" style="display: none;" onchange="setSuiviPresence('${emp.id}', '${dateKey}', 'present')" ${isPresent ? 'checked' : ''}>
+                            <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Présent
+                        </label>
+                        <label style="cursor: pointer; padding: 4px 10px; border-radius: 4px; border: 1px solid #ef4444; background: ${!isPresent ? '#ef4444' : 'transparent'}; color: ${!isPresent ? '#fff' : '#ef4444'}; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
+                            <input type="radio" name="status-done-${emp.id}" style="display: none;" onchange="setSuiviPresence('${emp.id}', '${dateKey}', 'absent')" ${!isPresent ? 'checked' : ''}>
+                            <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Absent
+                        </label>
+                    </div>
+                </td>
+            `;
+            tbodyDone.appendChild(tr);
+        }
+    });
+    
+    // Mettre à jour les compteurs
+    document.getElementById("suivi-pending-count").textContent = pendingCount;
+    document.getElementById("suivi-done-count").textContent = doneCount;
+    
+    lucide.createIcons();
+}
+
+function toggleSuiviSelectAll(cb) {
+    document.querySelectorAll(".suivi-row-cb").forEach(box => {
+        box.checked = cb.checked;
+    });
+}
+
+function markBulkPresence(isPresent) {
+    const dateKey = document.getElementById("suivi-date-input").value;
+    if (!dateKey) return;
+    
+    const checkboxes = document.querySelectorAll(".suivi-row-cb:checked");
+    if (checkboxes.length === 0) {
+        alert("Veuillez sélectionner au moins un employé.");
+        return;
+    }
+    
+    let updated = 0;
+    checkboxes.forEach(cb => {
+        const empId = cb.value;
+        if (!state.pointages[empId]) state.pointages[empId] = {};
+        if (!state.pointages[empId][dateKey]) state.pointages[empId][dateKey] = {};
+        
+        if (isPresent) {
+            state.pointages[empId][dateKey].status = "present";
+            // On le met en MP par défaut, il pourra être modifié dans l'onglet Pointage
+            if (!state.pointages[empId][dateKey].arrivee) {
+                state.pointages[empId][dateKey].arrivee = "MP"; 
+            }
+        } else {
+            state.pointages[empId][dateKey].status = "absent";
+            state.pointages[empId][dateKey].arrivee = "";
+            state.pointages[empId][dateKey].pause = "";
+            state.pointages[empId][dateKey].reprise = "";
+            state.pointages[empId][dateKey].fin = "";
+            state.pointages[empId][dateKey].nuitActive = false;
+        }
+        updated++;
+    });
+    
+    if (updated > 0) {
+        saveStateToLocalStorage();
+        renderSuiviJournalier();
+        
+        // Auto-actualiser le rapport s'il est déjà généré/affiché
+        const reportTable = document.getElementById("suivi-report-table");
+        if (reportTable && reportTable.style.display !== "none") {
+            generatePresenceReport();
+        }
+    }
+}
+
+function setSuiviPresence(empId, dateKey, status) {
+    if (!state.pointages[empId]) state.pointages[empId] = {};
+    if (!state.pointages[empId][dateKey]) state.pointages[empId][dateKey] = {};
+    
+    if (status === "present") {
+        state.pointages[empId][dateKey].status = "present";
+        if (!state.pointages[empId][dateKey].arrivee) {
+            state.pointages[empId][dateKey].arrivee = "MP"; 
+        }
+    } else {
+        state.pointages[empId][dateKey].status = "absent";
+        state.pointages[empId][dateKey].arrivee = "";
+        state.pointages[empId][dateKey].pause = "";
+        state.pointages[empId][dateKey].reprise = "";
+        state.pointages[empId][dateKey].fin = "";
+        state.pointages[empId][dateKey].nuitActive = false;
+    }
+    
+    saveStateToLocalStorage();
+    renderSuiviJournalier();
+    
+    // Auto-actualiser le rapport s'il est déjà généré/affiché
+    const reportTable = document.getElementById("suivi-report-table");
+    if (reportTable && reportTable.style.display !== "none") {
+        generatePresenceReport();
+    }
+}
+
+function saveSuiviMotif(empId, dateKey, value) {
+    if (!state.dayDetails[empId]) state.dayDetails[empId] = {};
+    if (!state.dayDetails[empId][dateKey]) state.dayDetails[empId][dateKey] = {};
+    
+    state.dayDetails[empId][dateKey].note = value.trim();
+    saveStateToLocalStorage();
+    
+    // Auto-actualiser le rapport s'il est déjà généré/affiché
+    const reportTable = document.getElementById("suivi-report-table");
+    if (reportTable && reportTable.style.display !== "none") {
+        generatePresenceReport();
+    }
+}
+
+function generatePresenceReport() {
+    const startInput = document.getElementById("suivi-report-start").value;
+    const endInput = document.getElementById("suivi-report-end").value;
+    const empFilterInput = document.getElementById("suivi-report-emp").value.trim();
+    
+    // Essayer de trouver l'employé sélectionné depuis l'input text (datalist)
+    let empFilterId = "all";
+    if (empFilterInput !== "") {
+        const sortedEmps = getSortedEmployees();
+        const matchedEmp = sortedEmps.find(e => `${e.matricule} - ${e.name}` === empFilterInput || e.name.toLowerCase().includes(empFilterInput.toLowerCase()) || (e.matricule && e.matricule.toLowerCase().includes(empFilterInput.toLowerCase())));
+        if (matchedEmp) {
+            empFilterId = matchedEmp.id;
+        } else {
+            alert("Employé introuvable avec ce nom ou matricule.");
+            return;
+        }
+    }
+    
+    if (!startInput || !endInput) {
+        alert("Veuillez sélectionner les dates de début et de fin.");
+        return;
+    }
+    
+    const startDate = new Date(startInput);
+    const endDate = new Date(endInput);
+    
+    if (startDate > endDate) {
+        alert("La date de début doit être antérieure à la date de fin.");
+        return;
+    }
+    
+    const reportTable = document.getElementById("suivi-report-table");
+    const tbody = document.getElementById("suivi-report-body");
+    tbody.innerHTML = "";
+    
+    const sortedEmps = getSortedEmployees();
+    
+    sortedEmps.forEach(emp => {
+        if (empFilterId !== "all" && emp.id !== empFilterId) return;
+        if (rapportSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== rapportSelectedDept) return;
+        
+        let daysExpected = 0;
+        let daysPresent = 0;
+        let daysAbsentJustified = 0;
+        let daysAbsentUnjustified = 0;
+        let absenceDetails = [];
+        
+        // Parcourir chaque jour de la période
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            // Ignorer les jours avant l'embauche
+            if (emp.startDate) {
+                const empStart = new Date(emp.startDate);
+                empStart.setHours(0,0,0,0);
+                if (d < empStart) continue;
+            }
+            
+            const year = d.getFullYear();
+            const month = d.getMonth();
+            
+            if (!isEmployeeActiveAtDate(emp, year, month)) continue;
+            
+            const dateKey = formatDateISO(d);
+            const dayOfWeek = d.getDay();
+            const holidays = getHolidays(year);
+            const isHoliday = !!holidays[dateKey];
+            const isSunday = (dayOfWeek === 0);
+            
+            const pointageData = (state.pointages[emp.id] && state.pointages[emp.id][dateKey]) || {};
+            const status = pointageData.status || "absent";
+            
+            // Jours attendus : ni dimanche ni férié
+            let expected = false;
+            if (!isSunday && !isHoliday) {
+                expected = true;
+                daysExpected++;
+            }
+            
+            // Si présent ou a pointé
+            if (status === "present" || (pointageData.arrivee && pointageData.arrivee !== "")) {
+                daysPresent++;
+                if (!expected) daysExpected++; // S'il travaille un jour non ouvrable, on l'ajoute aux jours attendus
+            } else if (expected) {
+                // S'il ne vient pas un jour ouvrable
+                if (status === "absent" || status === "autre" || status === "permission") {
+                    const dayDetail = (state.dayDetails[emp.id] && state.dayDetails[emp.id][dateKey]) || {};
+                    const note = (dayDetail.note || "").trim();
+                    const noteLower = note.toLowerCase();
+                    
+                    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const noteDisplay = note !== "" ? note : "Non justifié";
+                    const isJustified = noteLower && noteLower !== "" && noteLower !== "non justifié" && noteLower !== "non justifie";
+                    
+                    absenceDetails.push(`
+                        <span style="display: inline-block; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; margin: 2px; font-size: 0.85em; background: var(--bg-card); white-space: nowrap;">
+                            <strong>${dateStr}</strong>: <span style="color: ${isJustified ? '#10b981' : '#ef4444'}; font-weight: 500;">${noteDisplay}</span>
+                        </span>
+                    `);
+                    
+                    if (isJustified) {
+                        daysAbsentJustified++;
+                    } else {
+                        daysAbsentUnjustified++;
+                    }
+                } else {
+                    // Les absences payées (congé, maladie...) réduisent le nb de jours attendus pour ne pas pénaliser le taux
+                    daysExpected--;
+                }
+            }
+        }
+        
+        // S'il n'était pas censé travailler de toute la période
+        if (daysExpected === 0 && daysPresent === 0 && daysAbsentJustified === 0 && daysAbsentUnjustified === 0) return;
+        
+        const presenceRate = daysExpected > 0 ? Math.round((daysPresent / daysExpected) * 100) : 100;
+        
+        let obs = "";
+        let obsClass = "";
+        
+        if (daysAbsentUnjustified === 0) {
+            if (daysAbsentJustified === 0) {
+                obs = "Assiduité parfaite";
+                obsClass = "status-present";
+            } else {
+                obs = "Absences justifiées";
+                obsClass = "status-conge";
+            }
+        } else if (daysAbsentUnjustified <= 2) {
+            obs = "Quelques abs. injustifiées";
+            obsClass = "status-permission";
+        } else if (daysAbsentUnjustified <= 5) {
+            obs = "Abs. injustifiées fréquentes";
+            obsClass = "status-absent";
+        } else {
+            obs = "Risque de sanction";
+            obsClass = "status-absent";
+        }
+        
+        const startDateFormatted = emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : "N/A";
+        const absenceHtml = absenceDetails.length > 0 ? absenceDetails.join('') : '<span style="color: var(--text-muted);">-</span>';
+        
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td style="font-weight: 500;">
+                ${emp.matricule} - ${emp.name}
+                <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
+            </td>
+            <td class="col-expected">${daysExpected}</td>
+            <td class="col-present" style="color: #10b981; font-weight: bold; font-size: 1.1em;">${daysPresent}</td>
+            <td class="col-absences" style="text-align: left;">${absenceHtml}</td>
+            <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="flex-grow: 1; background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden; min-width: 100px;">
+                        <div style="width: ${presenceRate}%; background: ${presenceRate >= 90 ? '#10b981' : (presenceRate >= 70 ? '#f59e0b' : '#ef4444')}; height: 100%;"></div>
+                    </div>
+                    <span>${presenceRate}%</span>
+                </div>
+            </td>
+            <td><span class="status-badge ${obsClass}">${obs}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    reportTable.style.display = "table";
+    lucide.createIcons();
+}
+
+function setReportView(viewMode) {
+    const reportTable = document.getElementById("suivi-report-table");
+    if (!reportTable) return;
+    
+    // Nettoyer les classes
+    reportTable.classList.remove("show-only-absences", "show-only-presence");
+    
+    // Nettoyer l'état actif des boutons
+    document.getElementById("view-mixte-btn").classList.remove("btn-primary");
+    document.getElementById("view-mixte-btn").classList.add("btn-secondary");
+    document.getElementById("view-absence-btn").classList.remove("btn-primary");
+    document.getElementById("view-absence-btn").classList.add("btn-secondary");
+    document.getElementById("view-presence-btn").classList.remove("btn-primary");
+    document.getElementById("view-presence-btn").classList.add("btn-secondary");
+    
+    if (viewMode === "absence") {
+        reportTable.classList.add("show-only-absences");
+        document.getElementById("view-absence-btn").classList.remove("btn-secondary");
+        document.getElementById("view-absence-btn").classList.add("btn-primary");
+    } else if (viewMode === "presence") {
+        reportTable.classList.add("show-only-presence");
+        document.getElementById("view-presence-btn").classList.remove("btn-secondary");
+        document.getElementById("view-presence-btn").classList.add("btn-primary");
+    } else {
+        document.getElementById("view-mixte-btn").classList.remove("btn-secondary");
+        document.getElementById("view-mixte-btn").classList.add("btn-primary");
+    }
+}
+
+function printPresenceReport() {
+    const startInput = document.getElementById("suivi-report-start").value;
+    const endInput = document.getElementById("suivi-report-end").value;
+    const empFilterInput = document.getElementById("suivi-report-emp").value.trim();
+    
+    if (!startInput || !endInput) {
+        alert("Veuillez générer le rapport avant de l'imprimer.");
+        return;
+    }
+    
+    const formattedStart = new Date(startInput).toLocaleDateString('fr-FR');
+    const formattedEnd = new Date(endInput).toLocaleDateString('fr-FR');
+    
+    // Injecter les dates dans le header d'impression
+    const printDatesEl = document.getElementById("print-report-dates");
+    if (printDatesEl) {
+        printDatesEl.textContent = `Période du ${formattedStart} au ${formattedEnd}`;
+    }
+    
+    // Injecter le nom de l'employé dans le header d'impression
+    const printEmpEl = document.getElementById("print-report-emp-name");
+    if (printEmpEl) {
+        printEmpEl.textContent = empFilterInput !== "" ? `Employé : ${empFilterInput}` : "Tous les employés";
+    }
+    
+    // Lancer l'impression
+    window.print();
+}
+
+function isEmployeeActiveAtDate(emp, year, month) {
+    if (!emp.inactiveFrom) return true;
+    if (year < emp.inactiveFrom.year) return true;
+    if (year > emp.inactiveFrom.year) return false;
+    return month < emp.inactiveFrom.month;
+}
+
+// === GESTION DU NOUVEL ONGLET PARAMETRES ===
+
+function openEditModalById(empId) {
+    const emp = state.employees.find(e => e.id === empId);
+    if (emp) openEditModal(emp);
+}
+
+function initParametresTab() {
+    renderParamsTable();
+}
+
+function renderParamsTable() {
+    const tbody = document.getElementById("params-employees-body");
+    const summaryContainer = document.getElementById("params-dept-summary");
+    const deptFilterSelect = document.getElementById("params-dept-filter");
+    if (!tbody || !summaryContainer || !deptFilterSelect) return;
+    
+    const searchInput = document.getElementById("params-search");
+    const searchVal = searchInput ? searchInput.value.toLowerCase() : "";
+    
+    const showInactiveCheckbox = document.getElementById("params-show-inactive");
+    const showInactive = showInactiveCheckbox ? showInactiveCheckbox.checked : false;
+    
+    const selectedDept = deptFilterSelect.value || "all";
+    
+    let allDepts = new Set();
+    
+    state.employees.forEach(e => allDepts.add((e.departement || "Non Défini").trim()));
+    const deptsArray = Array.from(allDepts).sort();
+    
+    deptFilterSelect.innerHTML = `<option value="all">Tous les départements</option>`;
+    deptsArray.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        deptFilterSelect.appendChild(opt);
+    });
+    if (deptsArray.includes(selectedDept)) {
+        deptFilterSelect.value = selectedDept;
+    }
+    
+    const sortedEmps = getSortedEmployees();
+    tbody.innerHTML = "";
+    
+    let deptCounts = {};
+    
+    sortedEmps.forEach(emp => {
+        const isInactive = emp.inactiveFrom != null;
+        if (!showInactive && isInactive) return;
+        
+        const empDept = (emp.departement || "Non Défini").trim();
+        
+        if (selectedDept !== "all" && empDept !== selectedDept) return;
+        if (searchVal && !(emp.name.toLowerCase().includes(searchVal) || (emp.matricule && emp.matricule.toLowerCase().includes(searchVal)))) return;
+        
+        deptCounts[empDept] = (deptCounts[empDept] || 0) + 1;
+        
+        const tr = document.createElement("tr");
+        if (isInactive) tr.style.opacity = "0.6";
+        
+        const transportVal = emp.tauxTransport || 0;
+        const statutBadge = isInactive 
+            ? `<span class="badge" style="background:#fee2e2;color:#dc2626;border-color:#fecaca">Inactif depuis ${emp.inactiveFrom.month+1}/${emp.inactiveFrom.year}</span>`
+            : `<span class="badge" style="background:#dcfce7;color:#16a34a;border-color:#bbf7d0">Actif</span>`;
+            
+        tr.innerHTML = `
+            <td><strong>${emp.matricule || '-'}</strong></td>
+            <td>${emp.name}</td>
+            <td>${emp.role || 'Non Défini'}</td>
+            <td><span class="badge" style="background:var(--bg-input);color:var(--text-secondary)">${empDept}</span></td>
+            <td>${emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : 'N/A'}</td>
+            <td>${transportVal.toLocaleString('fr-FR')} F</td>
+            <td>${statutBadge}</td>
+            <td style="text-align:center;">
+                <button class="btn btn-secondary btn-sm" onclick="openEditModalById('${emp.id}')" title="Modifier">
+                    <i data-lucide="edit" style="width:14px;height:14px;"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+    
+    summaryContainer.innerHTML = "";
+    for (const [dept, count] of Object.entries(deptCounts)) {
+        const div = document.createElement("div");
+        div.className = "card shadow-sm";
+        div.style = "padding:10px 16px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--border-radius-md); display:flex; flex-direction:column; align-items:center; min-width:120px;";
+        div.innerHTML = `
+            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">${dept}</span>
+            <span style="font-size:1.5rem; font-weight:700; color:var(--text-primary);">${count}</span>
+        `;
+        summaryContainer.appendChild(div);
+    }
+}
+
