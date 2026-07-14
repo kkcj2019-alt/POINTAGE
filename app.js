@@ -974,6 +974,9 @@ function setupEventListeners() {
         renderEmployeeList();
         generateTable();
         renderHolidaysList();
+        generateRecapTable();
+        syncRapportDatesWithGlobal();
+        generatePresenceReport();
     });
     
     document.getElementById("year-selector").addEventListener("change", (e) => {
@@ -983,6 +986,9 @@ function setupEventListeners() {
         renderEmployeeList();
         generateTable();
         renderHolidaysList();
+        generateRecapTable();
+        syncRapportDatesWithGlobal();
+        generatePresenceReport();
     });
     
     // Onglets (Tabs)
@@ -5015,25 +5021,30 @@ function renderSuiviDeptsFilter() {
     });
 }
 
-function initRapportTab() {
-    const today = new Date();
-    renderRapportDeptsFilter();
-
-    // Auto-remplir les dates du rapport (du 1er du mois sélectionné au jour actuel)
+function syncRapportDatesWithGlobal() {
     const reportStartInput = document.getElementById("suivi-report-start");
     const reportEndInput = document.getElementById("suivi-report-end");
+    if (!reportStartInput || !reportEndInput) return;
     
-    if (!reportStartInput.value) {
-        const firstDay = new Date(state.currentYear, state.currentMonth, 1);
-        reportStartInput.value = formatDateISO(firstDay);
+    const today = new Date();
+    const firstDay = new Date(state.currentYear, state.currentMonth, 1);
+    reportStartInput.value = formatDateISO(firstDay);
+    
+    let endDate = today;
+    // Si le mois sélectionné est différent du mois actuel, on met le dernier jour du mois
+    if (today.getFullYear() !== state.currentYear || today.getMonth() !== state.currentMonth) {
+        endDate = new Date(state.currentYear, state.currentMonth + 1, 0);
     }
-    if (!reportEndInput.value) {
-        let endDate = today;
-        // Si le mois sélectionné est différent du mois actuel
-        if (today.getFullYear() !== state.currentYear || today.getMonth() !== state.currentMonth) {
-            endDate = new Date(state.currentYear, state.currentMonth + 1, 0);
-        }
-        reportEndInput.value = formatDateISO(endDate);
+    reportEndInput.value = formatDateISO(endDate);
+}
+
+function initRapportTab() {
+    renderRapportDeptsFilter();
+
+    // Auto-remplir les dates du rapport initialement
+    const reportStartInput = document.getElementById("suivi-report-start");
+    if (!reportStartInput.value) {
+        syncRapportDatesWithGlobal();
     }
     
     // Remplir le datalist des employés pour le rapport
@@ -5313,7 +5324,7 @@ function generatePresenceReport() {
         if (matchedEmp) {
             empFilterId = matchedEmp.id;
         } else {
-            alert("Employé introuvable avec ce nom ou matricule.");
+            // Si pas d'employé trouvé et champ non vide, on ne génère rien silencieusement
             return;
         }
     }
@@ -5388,14 +5399,19 @@ function generatePresenceReport() {
                     const note = (dayDetail.note || "").trim();
                     const noteLower = note.toLowerCase();
                     
-                    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
                     const noteDisplay = note !== "" ? note : "Non justifié";
                     const isJustified = noteLower && noteLower !== "" && noteLower !== "non justifié" && noteLower !== "non justifie";
+                    const bgColor = isJustified ? '#ecfdf5' : '#fef2f2';
+                    const borderColor = isJustified ? '#6ee7b7' : '#fca5a5';
+                    const dateColor = isJustified ? '#065f46' : '#991b1b';
+                    const motifColor = isJustified ? '#059669' : '#dc2626';
                     
                     absenceDetails.push(`
-                        <span style="display: inline-block; padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 4px; margin: 2px; font-size: 0.85em; background: var(--bg-card); white-space: nowrap;">
-                            <strong>${dateStr}</strong>: <span style="color: ${isJustified ? '#10b981' : '#ef4444'}; font-weight: 500;">${noteDisplay}</span>
-                        </span>
+                        <div style="display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 10px; border: 1.5px solid ${borderColor}; border-radius: 8px; margin: 2px; background: ${bgColor}; min-width: 72px; max-width: 90px; text-align: center; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                            <span style="font-size: 0.78em; font-weight: 800; color: ${dateColor}; line-height: 1.3; letter-spacing: 0.02em;">${dateStr}</span>
+                            <span style="font-size: 0.72em; font-weight: 600; color: ${motifColor}; line-height: 1.3; word-break: break-word; width: 100%; text-align: center; margin-top: 2px;">${noteDisplay}</span>
+                        </div>
                     `);
                     
                     if (isJustified) {
@@ -5438,23 +5454,26 @@ function generatePresenceReport() {
         }
         
         const startDateFormatted = emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : "N/A";
-        const absenceHtml = absenceDetails.length > 0 ? absenceDetails.join('') : '<span style="color: var(--text-muted);">-</span>';
+        const absenceHtml = absenceDetails.length > 0 ? absenceDetails.join('') : '<span style="color: var(--text-muted); font-size:0.8em;">-</span>';
         
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td style="font-weight: 500;">
-                ${emp.matricule} - ${emp.name}
-                <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
+            <td style="font-weight: 600; padding: 6px 8px; vertical-align: top; word-break: break-word;">
+                <div style="font-size: 0.82em; color: var(--accent-day); font-weight:700;">${emp.matricule}</div>
+                <div style="font-size: 0.88em; color: var(--text-primary); font-weight:600;">${emp.name}</div>
+                <div style="font-size: 0.72em; color: var(--text-muted);">${startDateFormatted}</div>
             </td>
-            <td class="col-expected">${daysExpected}</td>
-            <td class="col-present" style="color: #10b981; font-weight: bold; font-size: 1.1em;">${daysPresent}</td>
-            <td class="col-absences" style="text-align: left;">${absenceHtml}</td>
-            <td>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="flex-grow: 1; background: #e0e0e0; height: 8px; border-radius: 4px; overflow: hidden; min-width: 100px;">
-                        <div style="width: ${presenceRate}%; background: ${presenceRate >= 90 ? '#10b981' : (presenceRate >= 70 ? '#f59e0b' : '#ef4444')}; height: 100%;"></div>
+            <td class="col-expected" style="text-align:center; font-weight:700; font-size: 1em; vertical-align:middle;">${daysExpected}</td>
+            <td class="col-present" style="text-align:center; color: #10b981; font-weight: bold; font-size: 1.1em; vertical-align:middle;">${daysPresent}</td>
+            <td class="col-absences" style="padding: 4px 8px; vertical-align: middle;">
+                <div style="display: flex; flex-wrap: nowrap; gap: 4px; align-items: center;">${absenceHtml}</div>
+            </td>
+            <td style="vertical-align:middle; padding: 6px 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="flex-grow: 1; background: #e0e0e0; height: 7px; border-radius: 4px; overflow: hidden;">
+                        <div style="width: ${presenceRate}%; background: ${presenceRate >= 90 ? '#10b981' : (presenceRate >= 70 ? '#f59e0b' : '#ef4444')}; height: 100%; border-radius:4px;"></div>
                     </div>
-                    <span>${presenceRate}%</span>
+                    <span style="font-weight:700; font-size:1em;">${presenceRate}%</span>
                 </div>
             </td>
             <td><span class="status-badge ${obsClass}">${obs}</span></td>

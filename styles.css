@@ -458,6 +458,35 @@ body {
     height: 16px;
 }
 
+/* =============================
+   SEARCH PILL INPUT
+   ============================= */
+.search-pill-input {
+    padding: 11px 16px 11px 46px;
+    border: 2px solid var(--border-color);
+    border-radius: 50px;
+    background: #ffffff;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-family: var(--font-body);
+    font-weight: 500;
+    width: 100%;
+    outline: none;
+    transition: all 0.25s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.search-pill-input:focus {
+    border-color: var(--accent-day);
+    box-shadow: 0 0 0 3px rgba(79,70,229,0.15), 0 2px 8px rgba(0,0,0,0.06);
+    background: #fff;
+}
+
+.search-pill-input::placeholder {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
 /* Buttons */
 .btn {
     display: inline-flex;
@@ -1464,7 +1493,6 @@ tr td input.time-input[value="MP"] {
 
     /* SPECIFIC PRINT STYLES FOR SYNTHESE (A4 Fit) */
     #tab-synthese {
-        display: block !important;
         width: 100% !important;
         margin: 0 !important;
         padding: 0 !important;
@@ -1733,36 +1761,112 @@ tr.holiday-active-nuit td {
 }
 
 /* Filtrage des colonnes du rapport */
-#suivi-report-table.show-only-absences .col-expected,
-#suivi-report-table.show-only-absences .col-present {
-    display: none !important;
-}
+/* Les colonnes restent toutes visibles en mode Détail Absence (même comportement que Vue Mixte) */
+/* #suivi-report-table.show-only-absences: on ne cache plus les colonnes */
 #suivi-report-table.show-only-presence .col-absences {
     display: none !important;
 }
 
-/* Styles d'impression */
+/* Styles d'impression globaux */
 @media print {
-    body * {
-        visibility: hidden !important;
-    }
-    #print-report-container, #print-report-container * {
-        visibility: visible !important;
-    }
-    #print-report-container {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
+    /* Réinitialiser les marges et masquer l'interface générale */
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
         background: #fff !important;
-        color: #000 !important;
+        overflow: visible !important;
     }
+    .sidebar, .top-bar, .tab-buttons {
+        display: none !important;
+    }
+    
+    /* Gérer la structure des conteneurs principaux */
+    .app-container, .main-content {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        position: static !important;
+    }
+    
+    /* Ne pas forcer la hauteur de la fenêtre d'app */
+    #app {
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    /* -- IMPRESSION DU RAPPORT DE PRÉSENCE -- */
+    #tab-rapport-presence {
+        /* On s'assure juste que s'il est affiché, il prend toute la place */
+        width: 100% !important;
+        position: static !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Masquer les filtres et les boutons du rapport */
+    #tab-rapport-presence > *:not(.table-container) {
+        display: none !important;
+    }
+    
+    #tab-rapport-presence > .table-container {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+    
+    /* Rendre le conteneur spécifique du rapport visible et statique pour la pagination */
+    #print-report-container {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        zoom: 1 !important;
+    }
+    
+    /* Afficher l'entête spécifique d'impression */
     .print-header-info {
         display: block !important;
+        visibility: visible !important;
+        margin-bottom: 20px !important;
     }
-    /* Garder les couleurs à l'impression */
+    
+    /* Forcer le tableau à s'afficher comme une table pour paginer */
+    #suivi-report-table {
+        display: table !important;
+        width: 100% !important;
+        border-collapse: collapse !important;
+        page-break-inside: auto !important;
+    }
+    
+    #suivi-report-table th, #suivi-report-table td {
+        font-size: 0.75rem !important;
+        padding: 4px 6px !important;
+        border: 1px solid #999 !important;
+        height: auto !important;
+    }
+    
+    #suivi-report-table tr {
+        page-break-inside: avoid !important;
+    }
+    
+    /* Couleurs pour l'impression */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+    }
+    
+    /* Configuration de la page */
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
     }
 }
