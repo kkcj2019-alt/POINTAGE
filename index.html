@@ -105,11 +105,8 @@
                 <div class="section-title">
                     <span>Employés</span>
                     <div style="display: flex; gap: 8px;">
-                        <button id="config-structure-btn" title="Configurer Départements & Fonctions" style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                        <button id="config-structure-btn" title="Configurer Département & Fonctions" style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
                             <i data-lucide="settings-2" style="width: 16px; height: 16px;"></i>
-                        </button>
-                        <button id="manage-users-btn" title="Gérer les utilisateurs" style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: none; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
-                            <i data-lucide="users" style="width: 16px; height: 16px;"></i>
                         </button>
                         <button id="add-employee-btn" title="Ajouter un employé">
                             <i data-lucide="plus"></i>
@@ -879,6 +876,9 @@
                         <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button id="manage-users-btn" class="btn btn-secondary" style="display: none; align-items: center; gap: 8px;">
+                            <i data-lucide="users"></i> Gérer les Utilisateurs
+                        </button>
                         <button class="btn btn-secondary" onclick="openStructureConfigModal()">
                             <i data-lucide="building-2"></i> Gérer Depts &amp; Fonctions
                         </button>
