@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Pointage Pro - Gestion des Heures de Travail</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -130,6 +133,9 @@
                     </button>
                     <button id="bulk-assign-role-btn" class="btn btn-secondary btn-sm" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
                         <i data-lucide="briefcase" style="width: 13px; height: 13px;"></i> Affecter Fonction
+                    </button>
+                    <button id="bulk-custom-pointing-btn" class="btn btn-primary btn-sm" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <i data-lucide="clock" style="width: 13px; height: 13px;"></i> Pointage Groupé
                     </button>
                     <button id="bulk-clear-selection-btn" class="btn-text btn-sm" style="font-size: 0.72rem; cursor: pointer;">Annuler</button>
                 </div>
@@ -1278,6 +1284,79 @@
             </div>
         </div>
     </div>
+    <!-- Modal: Pointage Groupé Personnalisé -->
+    <div id="bulk-custom-pointing-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Pointage Groupé</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0;">
+                <p id="bulk-custom-pointing-count-label" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Saisissez les heures pour les employés sélectionnés.
+                </p>
+                <div class="form-group">
+                    <label for="bulk-pointing-date">Jour du mois en cours <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="number" id="bulk-pointing-date" min="1" max="31" placeholder="Ex: 15" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-primary);">
+                </div>
+                
+                <div class="form-group checkbox-group" style="margin: 15px 0;">
+                    <input type="checkbox" id="bulk-pointing-absence-cb">
+                    <label for="bulk-pointing-absence-cb" style="color: var(--accent-danger);">Marquer comme Absent / Non Travaillé</label>
+                </div>
+
+                <div id="bulk-pointing-hours-container">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="form-group">
+                            <label>Arrivée</label>
+                            <input type="text" id="bulk-pointing-arr" placeholder="ex: 07:30" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Pause</label>
+                            <input type="text" id="bulk-pointing-pau" placeholder="ex: 12:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Reprise</label>
+                            <input type="text" id="bulk-pointing-rep" placeholder="ex: 13:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fin</label>
+                            <input type="text" id="bulk-pointing-fin" placeholder="ex: 17:30" class="time-input">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group" style="margin: 15px 0;">
+                        <input type="checkbox" id="bulk-pointing-night-cb">
+                        <label for="bulk-pointing-night-cb">Appliquer un Shift de Nuit</label>
+                    </div>
+
+                    <div id="bulk-pointing-night-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label>Arrivée Nuit</label>
+                            <input type="text" id="bulk-pointing-narr" placeholder="ex: 21:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Pause Nuit</label>
+                            <input type="text" id="bulk-pointing-npau" placeholder="ex: 01:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Reprise Nuit</label>
+                            <input type="text" id="bulk-pointing-nrep" placeholder="ex: 02:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fin Nuit</label>
+                            <input type="text" id="bulk-pointing-nfin" placeholder="ex: 05:00" class="time-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" id="confirm-bulk-custom-pointing-btn" class="btn btn-primary">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Affectation de fonction groupée -->
     <div id="bulk-assign-role-modal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
@@ -1310,6 +1389,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
     <script src="firebase-config.js"></script>
-    <script src="app.js"></script>
+    <script src="app_v4.js"></script>
 </body>
 </html>
