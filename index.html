@@ -889,14 +889,15 @@
 
             <!-- TAB EMPLOYÉS & PARAMÈTRES -->
             <div id="tab-parametres" class="tab-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <!-- En-tête et Actions -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; margin: 0;">Base de Données Employés</h2>
-                        <p style="color: var(--text-muted); margin: 4px 0 0 0; font-size: 0.9rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
+                        <h2 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 700; margin: 0; color: var(--text-primary);">Base de Données Employés</h2>
+                        <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 0.95rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
                     </div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
                         <button id="manage-users-btn" class="btn btn-secondary" style="display: none; align-items: center; gap: 8px;">
-                            <i data-lucide="users"></i> Gérer les Utilisateurs
+                            <i data-lucide="users"></i> Gérer Utilisateurs
                         </button>
                         <button class="btn btn-secondary" onclick="openStructureConfigModal()">
                             <i data-lucide="building-2"></i> Gérer Depts &amp; Fonctions
@@ -907,48 +908,87 @@
                     </div>
                 </div>
 
-                <!-- Barre de recherche + filtre dept -->
-                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: var(--bg-card); padding: 12px 16px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
-                    <div style="position: relative; flex: 1; min-width: 280px;">
-                        <i data-lucide="search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
-                        <input type="text" id="params-search" class="search-pill-input" placeholder="Rechercher par nom ou matricule..." oninput="renderParamsTable()" style="width: 100%; padding: 10px 16px 10px 42px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.9rem; outline: none; transition: all 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                <!-- Section KPIs (Tableau de bord) -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px; gap: 8px;">
+                        <i data-lucide="pie-chart" style="color: var(--accent-primary); width: 20px; height: 20px;"></i>
+                        <h3 style="margin: 0; font-size: 1.1rem; font-family: var(--font-heading); font-weight: 600;">Répartition par Département</h3>
                     </div>
-                    <select id="params-dept-filter" style="min-width: 180px; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.9rem; outline: none; transition: all 0.2s;" onchange="renderParamsTable()">
-                        <option value="all">Tous les départements</option>
-                        <!-- Rempli dynamiquement -->
-                    </select>
-                    <label style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer;">
-                        <input type="checkbox" id="params-show-inactive" onchange="renderParamsTable()"> Voir inactifs
-                    </label>
+                    <div id="params-dept-summary" style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <!-- Rempli dynamiquement par JS -->
+                    </div>
                 </div>
 
-                <div class="table-container">
-                    <table class="modern-table" id="params-employees-table">
-                        <thead>
-                            <tr>
-                                <th>Matricule</th>
-                                <th>Nom Complet</th>
-                                <th>Fonction</th>
-                                <th>Département</th>
-                                <th>Date Début</th>
-                                <th>Transport</th>
-                                <th>Statut</th>
-                                <th style="text-align: center;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="params-employees-body">
+                <!-- Navigation Segmentée (Segmented Control) -->
+                <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+                    <div style="display: inline-flex; background: var(--bg-card); padding: 4px; border-radius: 50px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                        <button id="params-sub-tab-actifs" onclick="switchParamsSubTab('actifs')" style="padding: 10px 24px; font-size: 0.95rem; font-weight: 600; border: none; background: var(--accent-primary); color: white; border-radius: 50px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="users" style="width: 16px; height: 16px;"></i> Actifs
+                        </button>
+                        <button id="params-sub-tab-inactifs" onclick="switchParamsSubTab('inactifs')" style="padding: 10px 24px; font-size: 0.95rem; font-weight: 600; border: none; background: transparent; color: var(--text-muted); border-radius: 50px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="user-x" style="width: 16px; height: 16px;"></i> Inactifs
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PANEL : EMPLOYÉS ACTIFS -->
+                <div id="params-panel-actifs">
+                    <!-- Barre de recherche + filtre dept -->
+                    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: var(--bg-card); padding: 16px 20px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                        <div style="position: relative; flex: 1; min-width: 300px;">
+                            <i data-lucide="search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
+                            <input type="text" id="params-search" class="search-pill-input" placeholder="Rechercher par nom, matricule ou fonction..." oninput="renderParamsTable()" style="width: 100%; padding: 12px 16px 12px 42px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all 0.2s;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="filter" style="color: var(--text-muted); width: 18px; height: 18px;"></i>
+                            <select id="params-dept-filter" style="min-width: 200px; padding: 12px 20px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all 0.2s; cursor: pointer;" onchange="renderParamsTable()">
+                                <option value="all">Tous les départements</option>
+                                <!-- Rempli dynamiquement -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="border-radius: var(--border-radius-lg); overflow: hidden; box-shadow: var(--shadow-md);">
+                        <table class="modern-table" id="params-employees-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: var(--bg-card); border-bottom: 2px solid var(--border-color);">
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Employé</th>
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Fonction</th>
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Département</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Transport</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Date Embauche</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Statut</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="params-employees-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PANEL : EMPLOYÉS INACTIFS -->
+                <div id="params-panel-inactifs" style="display:none;">
+                    <!-- Filtre mois/année -->
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px; background:var(--bg-card); padding:14px 20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color); box-shadow:var(--shadow-sm); flex-wrap:wrap;">
+                        <i data-lucide="calendar" style="width:18px;height:18px;color:var(--accent-danger);"></i>
+                        <span style="font-size:0.9rem;font-weight:600;color:var(--text-secondary);">Afficher les inactifs pour&nbsp;:</span>
+                        <select id="inactive-filter-month" onchange="renderInactiveEmployeesTab()" style="padding:8px 14px;border:1px solid var(--border-color);border-radius:50px;background:var(--bg-input);color:var(--text-primary);font-size:0.9rem;outline:none;">
                             <!-- Rempli dynamiquement -->
-                        </tbody>
-                    </table>
+                        </select>
+                        <select id="inactive-filter-year" onchange="renderInactiveEmployeesTab()" style="padding:8px 14px;border:1px solid var(--border-color);border-radius:50px;background:var(--bg-input);color:var(--text-primary);font-size:0.9rem;outline:none;">
+                            <!-- Rempli dynamiquement -->
+                        </select>
+                        <span id="inactive-count-badge" style="background:#fee2e2;color:#b91c1c;padding:4px 14px;border-radius:50px;font-size:0.85rem;font-weight:700;border:1px solid #fecaca;"></span>
+                    </div>
+
+                    <!-- Contenu liste inactifs -->
+                    <div id="inactive-emp-list-container" class="table-container">
+                        <!-- Rempli dynamiquement par renderInactiveEmployeesTab() -->
+                    </div>
                 </div>
 
-                <!-- Résumé par département -->
-                <h3 style="margin-top: 35px; margin-bottom: 15px; font-size: 1.1rem; font-family: var(--font-heading);">
-                    <i data-lucide="pie-chart" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 6px;"></i> Répartition par Département
-                </h3>
-                <div id="params-dept-summary" style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <!-- Rempli dynamiquement -->
-                </div>
             </div> <!-- End tab-parametres -->
 
         </main>
@@ -1061,7 +1101,7 @@
                     <label for="edit-employee-active-cb" style="margin: 0; cursor: pointer;">Employé actif</label>
                 </div>
                 <div class="form-group" id="inactivation-month-group" style="display: none; margin-top: 10px;">
-                    <label for="edit-employee-inact-month">Inactif à partir de (Mois/Année) <span style="color: var(--accent-danger);">*</span></label>
+                    <label for="edit-employee-inact-month">Dernier mois d'activité (Mois/Année) <span style="color: var(--accent-danger);">*</span></label>
                     <div style="display: flex; gap: 8px;">
                         <select id="edit-employee-inact-month" class="custom-select" style="flex: 2; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);"></select>
                         <select id="edit-employee-inact-year" class="custom-select" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);"></select>

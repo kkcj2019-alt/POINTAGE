@@ -965,30 +965,58 @@ function updateHolidayDaySelector() {
     }
 }
 
+// ==========================================================================
+// CENTRAL REFRESH LOGIC
+// ==========================================================================
+function refreshAllViews() {
+    renderEmployeeList();
+    renderHolidaysList();
+    const activeTab = document.querySelector(".tab-content.active");
+    if (activeTab) {
+        refreshTabContent(activeTab.id);
+    }
+}
+
+function refreshTabContent(targetId) {
+    if (targetId === "tab-pointage") {
+        generateTable();
+    } else if (targetId === "tab-recap") {
+        generateRecapTable();
+    } else if (targetId === "tab-suivi") {
+        initSuiviTab();
+    } else if (targetId === "tab-rapport-presence") {
+        syncRapportDatesWithGlobal();
+        initRapportTab();
+        generatePresenceReport();
+    } else if (targetId === "tab-parametres") {
+        initParametresTab();
+    }
+}
+
 function setupEventListeners() {
     // Filtres
     document.getElementById("month-selector").addEventListener("change", (e) => {
         state.currentMonth = parseInt(e.target.value, 10);
         saveStateToLocalStorage();
         updateHolidayDaySelector();
-        renderEmployeeList();
-        generateTable();
-        renderHolidaysList();
-        generateRecapTable();
-        syncRapportDatesWithGlobal();
-        generatePresenceReport();
+        
+        // Synchroniser le filtre local des inactifs avec le mois global
+        const inactMonthSel = document.getElementById("inactive-filter-month");
+        if (inactMonthSel) inactMonthSel.value = state.currentMonth;
+        
+        refreshAllViews();
     });
     
     document.getElementById("year-selector").addEventListener("change", (e) => {
         state.currentYear = parseInt(e.target.value, 10);
         saveStateToLocalStorage();
         updateHolidayDaySelector();
-        renderEmployeeList();
-        generateTable();
-        renderHolidaysList();
-        generateRecapTable();
-        syncRapportDatesWithGlobal();
-        generatePresenceReport();
+        
+        // Synchroniser le filtre local des inactifs avec l'année globale
+        const inactYearSel = document.getElementById("inactive-filter-year");
+        if (inactYearSel) inactYearSel.value = state.currentYear;
+        
+        refreshAllViews();
     });
     
     // Onglets (Tabs)
@@ -1005,15 +1033,8 @@ function setupEventListeners() {
             // Sauvegarder l'onglet actif
             localStorage.setItem("activeTab", targetId);
             
-            if (targetId === "tab-recap") {
-                generateRecapTable();
-            } else if (targetId === "tab-suivi") {
-                initSuiviTab();
-            } else if (targetId === "tab-rapport-presence") {
-                initRapportTab();
-            } else if (targetId === "tab-parametres") {
-                initParametresTab();
-            }
+            // Toujours rafraîchir le contenu de l'onglet activé
+            refreshTabContent(targetId);
         });
     });
     
@@ -1365,9 +1386,8 @@ function setupEventListeners() {
             state.activeEmployeeId = newEmp.id;
             
             saveStateToLocalStorage();
-            renderEmployeeList();
             updateActiveEmployeeUI();
-            generateTable();
+            refreshAllViews();
             
             modal.classList.remove("active");
             form.reset();
@@ -1413,9 +1433,8 @@ function setupEventListeners() {
                 }
                 
                 saveStateToLocalStorage();
-                renderEmployeeList();
                 updateActiveEmployeeUI();
-                generateTable();
+                refreshAllViews();
                 
                 document.getElementById("edit-employee-modal").classList.remove("active");
             }
@@ -1490,7 +1509,7 @@ function isEmployeeActive(emp) {
     if (!emp.inactiveFrom) return true;
     if (state.currentYear < emp.inactiveFrom.year) return true;
     if (state.currentYear > emp.inactiveFrom.year) return false;
-    return state.currentMonth < emp.inactiveFrom.month;
+    return state.currentMonth <= emp.inactiveFrom.month;
 }
 
 function renderEmployeeList() {
@@ -1791,6 +1810,50 @@ function generateTable() {
     if (!state.activeEmployeeId) {
         tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; padding: 30px; color: var(--text-muted);">Veuillez sélectionner ou ajouter un employé pour commencer le pointage.</td></tr>`;
         updateSummaryKPIs(0, 0, 0, 0);
+        return;
+    }
+    
+    // Bloquer le pointage si l'employé est inactif pour le mois courant
+    const activeEmp = state.employees.find(e => e.id === state.activeEmployeeId);
+    if (activeEmp && !isEmployeeActive(activeEmp)) {
+        const inactiveSince = activeEmp.inactiveFrom;
+        let sinceLabel = '';
+        if (inactiveSince) {
+            const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+            // Le mois inactif effectif = mois suivant inactiveFrom
+            let inactMonth = inactiveSince.month + 1;
+            let inactYear = inactiveSince.year;
+            if (inactMonth > 11) { inactMonth = 0; inactYear++; }
+            sinceLabel = `depuis ${monthNames[inactMonth]} ${inactYear}`;
+        }
+        tbody.innerHTML = `
+            <tr><td colspan="15">
+                <div style="text-align:center; padding:40px 20px;">
+                    <div style="display:inline-flex; flex-direction:column; align-items:center; gap:16px; background:#fef2f2; border:2px solid #fecaca; border-radius:16px; padding:32px 48px; max-width:520px;">
+                        <div style="width:56px;height:56px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;">
+                            <svg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 24 24' fill='none' stroke='#dc2626' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'/><line x1='4.93' y1='4.93' x2='19.07' y2='19.07'/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size:1.1rem;font-weight:700;color:#b91c1c;margin-bottom:6px;">Employé Inactif</div>
+                            <div style="font-size:0.9rem;color:#7f1d1d;">
+                                <strong>${activeEmp.name}</strong> est marqué comme inactif ${sinceLabel}.<br>
+                                Le pointage est désactivé pour ce mois.
+                            </div>
+                        </div>
+                        <div style="font-size:0.8rem;color:#dc2626;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:10px 18px;">
+                            💡 Pour réactiver cet employé, modifiez son profil dans <strong>Employés &amp; Paramètres</strong>.
+                        </div>
+                    </div>
+                </div>
+            </td></tr>
+        `;
+        if (synthTbody) synthTbody.innerHTML = '';
+        updateSummaryKPIs(0, 0, 0, 0);
+        // Masquer les boutons d'action
+        const applyDefaultBtn2 = document.getElementById('apply-default-month-btn');
+        if (applyDefaultBtn2) applyDefaultBtn2.style.display = 'none';
+        const clearMonthBtn2 = document.getElementById('clear-month-btn');
+        if (clearMonthBtn2) clearMonthBtn2.style.display = 'none';
         return;
     }
     
@@ -2296,13 +2359,7 @@ function generateRecapTable() {
     let activeEmployees = state.employees.filter(emp => {
         const showInactiveCb = document.getElementById("show-inactive-cb");
         const showInactive = showInactiveCb ? showInactiveCb.checked : false;
-        if (!showInactive) {
-            if (emp.inactiveFrom) {
-                const inactiveDate = new Date(emp.inactiveFrom.year, emp.inactiveFrom.month, 1);
-                const currentMonthDate = new Date(state.currentYear, state.currentMonth, 1);
-                if (inactiveDate <= currentMonthDate) return false;
-            }
-        }
+        if (!showInactive && !isEmployeeActive(emp)) return false;
         return true;
     });
 
@@ -2746,9 +2803,14 @@ function applyDefaultPointingToEmployees(employeeIds) {
     });
     
     employeeIds.forEach(empId => {
+        // Ne pas appliquer si l'employé est inactif pour ce mois
+        const emp = state.employees.find(e => e.id === empId);
+        if (emp && !isEmployeeActive(emp)) return;
+
         if (!state.pointages[empId]) {
             state.pointages[empId] = {};
         }
+
         
         // Nettoyer d'abord le mois
         for (let day = 1; day <= daysCount; day++) {
@@ -5547,7 +5609,7 @@ function isEmployeeActiveAtDate(emp, year, month) {
     if (!emp.inactiveFrom) return true;
     if (year < emp.inactiveFrom.year) return true;
     if (year > emp.inactiveFrom.year) return false;
-    return month < emp.inactiveFrom.month;
+    return month <= emp.inactiveFrom.month;
 }
 
 // === GESTION DU NOUVEL ONGLET PARAMETRES ===
@@ -5559,6 +5621,13 @@ function openEditModalById(empId) {
 
 function initParametresTab() {
     renderParamsTable();
+    
+    // Si l'onglet inactifs est affiché, on le met à jour
+    const panelInactifs = document.getElementById('params-panel-inactifs');
+    if (panelInactifs && panelInactifs.style.display !== 'none') {
+        renderInactiveEmployeesTab();
+    }
+    updateInactiveCountBadge();
 }
 
 function renderParamsTable() {
@@ -5611,8 +5680,14 @@ function renderParamsTable() {
         if (isInactive) tr.style.opacity = "0.6";
         
         const transportVal = emp.tauxTransport || 0;
+        let nextMonth = emp.inactiveFrom ? emp.inactiveFrom.month + 1 : 0;
+        let nextYear = emp.inactiveFrom ? emp.inactiveFrom.year : 0;
+        if (nextMonth > 11) {
+            nextMonth = 0;
+            nextYear++;
+        }
         const statutBadge = isInactive 
-            ? `<span class="badge" style="background:#fee2e2;color:#dc2626;border-color:#fecaca">Inactif depuis ${emp.inactiveFrom.month+1}/${emp.inactiveFrom.year}</span>`
+            ? `<span class="badge" style="background:#fee2e2;color:#dc2626;border-color:#fecaca">Inactif depuis ${nextMonth+1}/${nextYear}</span>`
             : `<span class="badge" style="background:#dcfce7;color:#16a34a;border-color:#bbf7d0">Actif</span>`;
             
         tr.innerHTML = `
@@ -5648,4 +5723,159 @@ function renderParamsTable() {
         summaryContainer.appendChild(div);
     }
 }
+
+// ==========================================================================
+// SOUS-ONGLETS PARAMÈTRES (Actifs / Inactifs)
+// ==========================================================================
+function switchParamsSubTab(tab) {
+    const panelActifs = document.getElementById('params-panel-actifs');
+    const panelInactifs = document.getElementById('params-panel-inactifs');
+    const btnActifs = document.getElementById('params-sub-tab-actifs');
+    const btnInactifs = document.getElementById('params-sub-tab-inactifs');
+
+    if (tab === 'actifs') {
+        if (panelActifs) panelActifs.style.display = '';
+        if (panelInactifs) panelInactifs.style.display = 'none';
+        if (btnActifs) {
+            btnActifs.style.borderBottom = '3px solid var(--accent-primary)';
+            btnActifs.style.color = 'var(--accent-primary)';
+        }
+        if (btnInactifs) {
+            btnInactifs.style.borderBottom = '3px solid transparent';
+            btnInactifs.style.color = 'var(--text-muted)';
+        }
+    } else {
+        if (panelActifs) panelActifs.style.display = 'none';
+        if (panelInactifs) panelInactifs.style.display = '';
+        if (btnInactifs) {
+            btnInactifs.style.borderBottom = '3px solid #dc2626';
+            btnInactifs.style.color = '#dc2626';
+        }
+        if (btnActifs) {
+            btnActifs.style.borderBottom = '3px solid transparent';
+            btnActifs.style.color = 'var(--text-muted)';
+        }
+        renderInactiveEmployeesTab();
+        // Update count badge
+        updateInactiveCountBadge();
+    }
+}
+
+function updateInactiveCountBadge() {
+    const monthSelect = document.getElementById('inactive-filter-month');
+    const yearSelect = document.getElementById('inactive-filter-year');
+    const badge = document.getElementById('inactive-count-badge');
+    if (!badge) return;
+    const filterMonth = (monthSelect && monthSelect.value !== "") ? parseInt(monthSelect.value) : state.currentMonth;
+    const filterYear = (yearSelect && yearSelect.value !== "") ? parseInt(yearSelect.value) : state.currentYear;
+    const count = getSortedEmployees().filter(emp => {
+        if (!emp.inactiveFrom) return false;
+        return !isEmployeeActiveAtDate(emp, filterYear, filterMonth);
+    }).length;
+    badge.textContent = count === 0 ? 'Aucun inactif' : `${count} inactif${count > 1 ? 's' : ''}`;
+    badge.style.display = count === 0 ? 'none' : '';
+}
+
+// ==========================================================================
+// ONGLET EMPLOYÉS INACTIFS
+// ==========================================================================
+function renderInactiveEmployeesTab() {
+
+    const container = document.getElementById('inactive-emp-list-container');
+    const monthSelect = document.getElementById('inactive-filter-month');
+    const yearSelect = document.getElementById('inactive-filter-year');
+    if (!container) return;
+
+
+    // Populate year/month selectors on first call
+    if (monthSelect && monthSelect.options.length === 0) {
+        const monthNames = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+        monthNames.forEach((m, i) => {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = m;
+            monthSelect.appendChild(opt);
+        });
+    }
+    if (yearSelect && yearSelect.options.length === 0) {
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear - 3; y <= currentYear + 2; y++) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            yearSelect.appendChild(opt);
+        }
+    }
+
+    // Set defaults on first render
+    if (monthSelect && !monthSelect.dataset.initialized) {
+        monthSelect.value = state.currentMonth;
+        yearSelect.value = state.currentYear;
+        monthSelect.dataset.initialized = '1';
+    }
+
+    // Get selected filter month/year (default = current)
+    const filterMonth = (monthSelect && monthSelect.value !== "") ? parseInt(monthSelect.value) : state.currentMonth;
+    const filterYear = (yearSelect && yearSelect.value !== "") ? parseInt(yearSelect.value) : state.currentYear;
+
+    // Find employees inactive for the selected month
+    const inactiveEmps = getSortedEmployees().filter(emp => {
+        if (!emp.inactiveFrom) return false;
+        // Employee is inactive for filterMonth/filterYear if isEmployeeActiveAtDate returns false
+        return !isEmployeeActiveAtDate(emp, filterYear, filterMonth);
+    });
+
+    const monthNames2 = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+    if (inactiveEmps.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
+                <svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' style='margin-bottom:12px;opacity:0.4;'><path d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>
+                <div style='font-size:0.95rem;'>Aucun employé inactif pour <strong>${monthNames2[filterMonth]} ${filterYear}</strong>.</div>
+            </div>`;
+        return;
+    }
+
+    let html = `<div style='overflow-x:auto;'><table class='modern-table' style='width:100%;'>
+        <thead><tr>
+            <th>Matricule</th>
+            <th>Nom Complet</th>
+            <th>Fonction</th>
+            <th>Département</th>
+            <th>Date Embauche</th>
+            <th>Dernier mois actif</th>
+            <th>Inactif depuis</th>
+            <th style='text-align:center;'>Action</th>
+        </tr></thead><tbody>`;
+
+    inactiveEmps.forEach(emp => {
+        const lastActiveMonth = emp.inactiveFrom.month;
+        const lastActiveYear = emp.inactiveFrom.year;
+        let sinceMonth = lastActiveMonth + 1;
+        let sinceYear = lastActiveYear;
+        if (sinceMonth > 11) { sinceMonth = 0; sinceYear++; }
+
+        html += `<tr style='opacity:0.85;'>
+            <td><strong>${emp.matricule || '—'}</strong></td>
+            <td>${emp.name}</td>
+            <td>${emp.role || '—'}</td>
+            <td><span class='badge' style='background:var(--bg-input);color:var(--text-secondary);'>${(emp.departement || 'Non Défini').trim()}</span></td>
+            <td>${emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : 'N/A'}</td>
+            <td><span class='badge' style='background:#dcfce7;color:#16a34a;border-color:#bbf7d0;'>${monthNames2[lastActiveMonth]} ${lastActiveYear}</span></td>
+            <td><span class='badge' style='background:#fee2e2;color:#dc2626;border-color:#fecaca;'>À partir de ${monthNames2[sinceMonth]} ${sinceYear}</span></td>
+            <td style='text-align:center;'>
+                <button class='btn btn-secondary btn-sm' onclick="openEditModalById('${emp.id}')" title='Modifier / Réactiver'>
+                    <i data-lucide='edit' style='width:14px;height:14px;'></i> Modifier
+                </button>
+            </td>
+        </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+    if (window.lucide) lucide.createIcons();
+    updateInactiveCountBadge();
+}
+
 
