@@ -178,9 +178,10 @@
                 
                 <div class="header-controls">
                     <!-- Month & Year Selectors -->
-                    <div class="selector-group">
-                        <div class="custom-select-wrapper">
-                            <select id="month-selector" class="custom-select">
+                      <div class="selector-group">
+                          <div class="custom-select-wrapper">
+                              <span id="current-year-display" style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-right: 10px;"></span>
+                              <select id="month-selector" class="custom-select">
                                 <option value="0">Janvier</option>
                                 <option value="1">Février</option>
                                 <option value="2">Mars</option>
@@ -495,13 +496,21 @@
                                 <i data-lucide="refresh-cw"></i> Actualiser
                             </button>
                         </div>
+                        <div class="form-group" style="margin-bottom: 0; position:relative; min-width: 250px;">
+                            <label>Recherche (Nom, Matricule)</label>
+                            <i data-lucide="search" style="position:absolute; left:10px; top:36px; width:16px; height:16px; color:var(--text-muted);"></i>
+                            <input type="text" id="suivi-search-input" class="modern-input" placeholder="Chercher..." style="padding-left:32px; width:100%;" oninput="renderSuiviJournalier()">
+                        </div>
                         <div style="flex-grow: 1;"></div>
-                        <div class="form-group" style="margin-bottom: 0; display: flex; gap: 10px;">
+                        <div class="form-group" style="margin-bottom: 0; display: flex; gap: 10px; flex-wrap: wrap;">
                             <button class="btn btn-success" onclick="markBulkPresence(true)">
                                 <i data-lucide="check-circle"></i> Marquer Présents
                             </button>
                             <button class="btn btn-danger" onclick="markBulkPresence(false)">
                                 <i data-lucide="x-circle"></i> Marquer Absents
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearSuiviPresenceCeJour()" style="background-color: #fef2f2; border-color: #fca5a5; color: #b91c1c;">
+                                <i data-lucide="trash-2"></i> Effacer ce jour
                             </button>
                         </div>
                     </div>
@@ -521,6 +530,7 @@
                                 <th>Département</th>
                                 <th>Statut Actuel</th>
                                 <th>Motif (Si absent)</th>
+                                <th>Observation</th>
                                 <th>Action Rapide</th>
                             </tr>
                         </thead>
@@ -543,6 +553,7 @@
                                 <th>Département</th>
                                 <th>Statut Enregistré</th>
                                 <th>Motif (Si absent)</th>
+                                <th>Observation</th>
                                 <th>Modifier le Pointage</th>
                             </tr>
                         </thead>
@@ -1019,9 +1030,8 @@
                 </div>
                 <div class="form-group">
                     <label for="employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <select id="employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
-                        <option value="">Sélectionnez une fonction...</option>
-                    </select>
+                    <input type="text" id="employee-role-input" list="add-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
+                    <datalist id="add-role-datalist"></datalist>
                 </div>
                 <div class="form-group">
                     <label for="employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1074,9 +1084,8 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <select id="edit-employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
-                        <option value="">Sélectionnez une fonction...</option>
-                    </select>
+                    <input type="text" id="edit-employee-role-input" list="edit-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
+                    <datalist id="edit-role-datalist"></datalist>
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1370,9 +1379,8 @@
                 </p>
                 <div class="form-group">
                     <label for="bulk-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <select id="bulk-employee-role-input" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
-                        <option value="">Sélectionnez une fonction...</option>
-                    </select>
+                    <input type="text" id="bulk-employee-role-input" list="bulk-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
+                    <datalist id="bulk-role-datalist"></datalist>
                 </div>
                 <div class="form-group" style="margin-top: 12px;">
                     <label for="bulk-employee-departement-input">Département résolu</label>

@@ -123,96 +123,66 @@ function getHolidaysForMonth(year, month) {
 let selectedDeptConfig = null;
 
 function populateEmployeeFormSelects(selectedDeptValue = "", selectedFoncValue = "", formType = "add") {
+    let roleInputId = "employee-role-input";
     let deptInputId = "employee-departement-input";
-    let roleSelectId = "employee-role-input";
+    let datalistId = "add-role-datalist";
     if (formType === "edit") {
+        roleInputId = "edit-employee-role-input";
         deptInputId = "edit-employee-departement-input";
-        roleSelectId = "edit-employee-role-input";
+        datalistId = "edit-role-datalist";
     } else if (formType === "bulk") {
+        roleInputId = "bulk-employee-role-input";
         deptInputId = "bulk-employee-departement-input";
-        roleSelectId = "bulk-employee-role-input";
+        datalistId = "bulk-role-datalist";
     }
+
+    const roleInput = document.getElementById(roleInputId);
     const deptInput = document.getElementById(deptInputId);
-    const foncSelect = document.getElementById(roleSelectId);
-    if (!deptInput || !foncSelect) return;
-    
-    // Remplir les fonctions regroupées par département
-    foncSelect.innerHTML = '<option value="">Sélectionnez une fonction...</option>';
+    const datalist = document.getElementById(datalistId);
+    if (!roleInput) return;
 
+    // Collecter TOUS les rôles : depuis companyStructure + depuis les employés existants
     if (!state.companyStructure) state.companyStructure = {};
-
-    // Collecter toutes les fonctions actuellement configurées
-    const allConfiguredRoles = new Set();
+    const allRoles = new Set();
     Object.values(state.companyStructure).forEach(foncs => {
-        if (Array.isArray(foncs)) {
-            foncs.forEach(f => allConfiguredRoles.add(f));
-        }
+        if (Array.isArray(foncs)) foncs.forEach(f => allRoles.add(f));
     });
-
-    // Trouver les rôles utilisés par les employés mais non configurés
-    let missingRoles = new Set();
-    if (state.employees && state.employees.length > 0) {
-        state.employees.forEach(emp => {
-            if (emp.role && !allConfiguredRoles.has(emp.role)) {
-                missingRoles.add(emp.role);
-            }
-        });
+    if (state.employees) {
+        state.employees.forEach(emp => { if (emp.role) allRoles.add(emp.role); });
     }
+    // Si aucun rôle trouvé, mettre des valeurs par défaut
+    if (allRoles.size === 0) { allRoles.add("Employé"); allRoles.add("Manager"); }
 
-    // Si on a des rôles manquants, on les ajoute dans un département "Général"
-    if (missingRoles.size > 0) {
-        if (!state.companyStructure["Général"]) state.companyStructure["Général"] = [];
-        missingRoles.forEach(r => {
-            if (!state.companyStructure["Général"].includes(r)) {
-                state.companyStructure["Général"].push(r);
-            }
-        });
-        if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
-    }
-
-    // Si la structure est totalement vide (aucun département et aucun employé)
-    if (Object.keys(state.companyStructure).length === 0) {
-        state.companyStructure = { "Général": ["Employé", "Manager"] };
-        if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
-    }
-
-    const depts = Object.keys(state.companyStructure).sort();
-    
-    const debugOpt = document.createElement("option");
-    debugOpt.disabled = true;
-    debugOpt.textContent = "[DEBUG v3] Depts: " + depts.length + " | " + depts.join(",");
-    foncSelect.appendChild(debugOpt);
-    
-    depts.forEach(dept => {
-        const group = document.createElement("optgroup");
-        group.label = dept;
-        const foncs = Array.isArray(state.companyStructure[dept]) ? [...state.companyStructure[dept]].sort() : [];
-        foncs.forEach(f => {
+    // Peupler le datalist
+    if (datalist) {
+        datalist.innerHTML = "";
+        [...allRoles].sort().forEach(role => {
             const opt = document.createElement("option");
-            opt.value = f;
-            opt.textContent = f;
-            opt.setAttribute("data-dept", dept);
-            if (f === selectedFoncValue && (dept === selectedDeptValue || !selectedDeptValue)) {
-                opt.selected = true;
-            }
-            group.appendChild(opt);
+            opt.value = role;
+            datalist.appendChild(opt);
         });
-        if (foncs.length > 0) {
-            foncSelect.appendChild(group);
-        }
-    });
+    }
 
-    // Mettre à jour le département selon la fonction sélectionnée
-    const updateDeptFromSelectedFonc = () => {
-        const selectedOpt = foncSelect.options[foncSelect.selectedIndex];
-        if (selectedOpt && selectedOpt.value) {
-            deptInput.value = selectedOpt.getAttribute("data-dept") || "Non Défini";
-        } else {
-            deptInput.value = "";
+    // Pré-remplir le champ si une valeur est passée
+    if (selectedFoncValue) roleInput.value = selectedFoncValue;
+
+    // Mettre à jour le département selon le rôle saisi
+    const updateDept = () => {
+        const val = roleInput.value.trim();
+        if (deptInput) {
+            let foundDept = "";
+            Object.entries(state.companyStructure || {}).forEach(([dept, foncs]) => {
+                if (Array.isArray(foncs) && foncs.includes(val)) foundDept = dept;
+            });
+            deptInput.value = foundDept || (val ? "Général" : "");
         }
     };
-
-    updateDeptFromSelectedFonc();
+    updateDept();
+    // Mettre à jour à chaque changement
+    roleInput.removeEventListener("input", roleInput._deptUpdater);
+    roleInput._deptUpdater = updateDept;
+    roleInput.addEventListener("input", roleInput._deptUpdater);
+    roleInput.addEventListener("change", roleInput._deptUpdater);
 }
 
 function renderStructureConfigModal() {
@@ -487,10 +457,21 @@ function loadStateFromLocalStorage() {
     if (localSavedState) {
         try {
             const local = JSON.parse(localSavedState);
-            state.currentUser = local.currentUser || null;
+
+            // --- SESSION TIMEOUT 30 MIN ---
+            const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+            const loginTime = local.loginTime || 0;
+            const elapsed = Date.now() - loginTime;
+            if (local.currentUser && elapsed < SESSION_TIMEOUT_MS) {
+                state.currentUser = local.currentUser;
+            } else {
+                // Session expirée ou pas de loginTime : déconnecter
+                state.currentUser = null;
+            }
+
             state.activeEmployeeId = local.activeEmployeeId || null;
-            state.currentYear = local.currentYear !== undefined ? local.currentYear : new Date().getFullYear();
-            state.currentMonth = local.currentMonth !== undefined ? local.currentMonth : new Date().getMonth();
+            state.currentYear = local.currentYear !== undefined ? parseInt(local.currentYear) : new Date().getFullYear();
+            state.currentMonth = local.currentMonth !== undefined ? parseInt(local.currentMonth) : new Date().getMonth();
         } catch (e) {
             console.error("Erreur locale", e);
         }
@@ -654,7 +635,9 @@ function saveStateToLocalStorage() {
         currentUser: state.currentUser,
         activeEmployeeId: state.activeEmployeeId,
         currentYear: state.currentYear,
-        currentMonth: state.currentMonth
+        currentMonth: state.currentMonth,
+        // Mettre à jour le timestamp d'activité si l'utilisateur est connecté
+        loginTime: state.currentUser ? Date.now() : 0
     };
     localStorage.setItem("pointage_pro_state_local", JSON.stringify(localState));
     
@@ -965,9 +948,15 @@ function getRowCalculations(data, detail, periodPaid) {
 // 4. CONFIGURATION ET CONTRÔLES DU DASHBOARD
 // ==========================================================================
 function initializeSelectors() {
+    // Afficher l'année en cours en grand
+    const yearDisplay = document.getElementById("current-year-display");
+    if (yearDisplay) yearDisplay.textContent = state.currentYear;
+
     // Sélecteur de mois
     const monthSelector = document.getElementById("month-selector");
-    monthSelector.value = state.currentMonth;
+    if (monthSelector) {
+        monthSelector.value = String(state.currentMonth);
+    }
     
     // Sélecteur d'année (5 ans en arrière et 5 ans en avant)
     const yearSelector = document.getElementById("year-selector");
@@ -1055,6 +1044,10 @@ function setupEventListeners() {
         saveStateToLocalStorage();
         updateHolidayDaySelector();
         
+        // Mettre à jour l'affichage de l'année en grand
+        const yearDisplay = document.getElementById("current-year-display");
+        if (yearDisplay) yearDisplay.textContent = state.currentYear;
+
         // Synchroniser le filtre local des inactifs avec l'année globale
         const inactYearSel = document.getElementById("inactive-filter-year");
         if (inactYearSel) inactYearSel.value = state.currentYear;
@@ -2248,7 +2241,7 @@ function generateTable() {
             </td>
             
             <!-- Shift Jour -->
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)}"></td>
+            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)} ${data.status === 'present' && (!data.arrivee || data.arrivee.trim() === '') ? 'border: 2px solid #ef4444; background-color: #fee2e2;' : ''}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="pause" value="${data.pause || ''}" placeholder="12:00" ${getFieldDisabled(data.pause)} style="${getFieldStyle(data.pause)}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="reprise" value="${data.reprise || ''}" placeholder="13:00" ${getFieldDisabled(data.reprise)} style="${getFieldStyle(data.reprise)}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="fin" value="${data.fin || ''}" placeholder="17:00" ${getFieldDisabled(data.fin)} style="${getFieldStyle(data.fin)}"></td>
@@ -5080,6 +5073,30 @@ if (closeMonthBtn) {
         const monthSelector = document.getElementById("month-selector");
         const monthLabel = monthSelector.options[monthSelector.selectedIndex].text;
         
+        // VALIDATION : vérifier si des employés sont présents mais n'ont pas d'heure de pointage
+        let hasIncompletePointage = false;
+        let incompleteDetails = "";
+        
+        state.employees.forEach(emp => {
+            if (!isEmployeeActiveAtDate(emp, state.currentYear, state.currentMonth)) return;
+            const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dKey = `${state.currentYear}-${monthStr}-${String(i).padStart(2, '0')}`;
+                const pt = state.pointages[emp.id] ? state.pointages[emp.id][dKey] : null;
+                if (pt && pt.status === "present") {
+                    if (!pt.arrivee || pt.arrivee.trim() === "") {
+                        hasIncompletePointage = true;
+                        incompleteDetails += `- ${emp.name} le ${String(i).padStart(2, '0')}/${monthStr}/${state.currentYear}\n`;
+                    }
+                }
+            }
+        });
+
+        if (hasIncompletePointage) {
+            alert(`Impossible de clôturer ce mois.\n\nCertains employés sont marqués "Présent" dans le Suivi Présence mais n'ont pas d'heures saisies dans l'onglet Pointage :\n\n${incompleteDetails}\nVeuillez d'abord remplir leurs heures de pointage.`);
+            return;
+        }
+        
         if (confirm(`Voulez-vous vraiment clôturer le mois de ${monthLabel} ${state.currentYear} ?\n\nUne fois clôturé, les pointages de TOUS les employés pour ce mois ne pourront plus être modifiés.`)) {
             state.closedMonths.push(monthKey);
             saveStateToLocalStorage();
@@ -5411,6 +5428,14 @@ function renderSuiviJournalier() {
         if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) {
             return;
         }
+
+        const searchInput = document.getElementById("suivi-search-input");
+        const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        if (searchVal) {
+            const name = (emp.name || "").toLowerCase();
+            const mat = (emp.matricule || "").toLowerCase();
+            if (!name.includes(searchVal) && !mat.includes(searchVal)) return;
+        }
         
         const pointageData = (state.pointages[emp.id] && state.pointages[emp.id][dateKey]) || {};
         const status = pointageData.status; // statut précis
@@ -5437,10 +5462,9 @@ function renderSuiviJournalier() {
 
         if (isPending) {
             pendingCount++;
-            
-            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
-                placeholder="Non justifié" value="${motif}" 
-                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)">`;
+
+            const motifVal = dayDetail.note || "";
+            const obsVal = dayDetail.observation || "";
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -5450,9 +5474,10 @@ function renderSuiviJournalier() {
                     ${emp.name}
                     <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
                 </td>
-                <td><span class="dept-badge">${emp.departement}</span></td>
+                <td><span class="dept-badge">${emp.departement || 'N/A'}</span></td>
                 <td><span class="status-badge" style="background:#94a3b8; color:#fff;">Non Pointé</span></td>
-                <td>${motifInput}</td>
+                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Motif absence..." value="${motifVal}" onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"></td>
+                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Observation..." value="${obsVal}" onchange="saveSuiviObservation('${emp.id}', '${dateKey}', this.value)"></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: center;">
                         <button class="btn btn-sm btn-success" onclick="setSuiviPresence('${emp.id}', '${dateKey}', 'present')" style="padding: 4px 8px;">
@@ -5467,11 +5492,9 @@ function renderSuiviJournalier() {
             tbody.appendChild(tr);
         } else {
             doneCount++;
-            
-            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
-                placeholder="Non justifié" value="${motif}" 
-                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"
-                ${isPresent ? 'disabled opacity="0.5"' : ''}>`;
+
+            const motifVal = dayDetail.note || "";
+            const obsVal = dayDetail.observation || "";
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -5480,9 +5503,10 @@ function renderSuiviJournalier() {
                     ${emp.name}
                     <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
                 </td>
-                <td><span class="dept-badge">${emp.departement}</span></td>
+                <td><span class="dept-badge">${emp.departement || 'N/A'}</span></td>
                 <td id="suivi-status-${emp.id}">${statusBadge}</td>
-                <td>${motifInput}</td>
+                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Motif absence..." value="${motifVal}" onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"></td>
+                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Observation..." value="${obsVal}" onchange="saveSuiviObservation('${emp.id}', '${dateKey}', this.value)"></td>
                 <td>
                     <div style="display: flex; gap: 5px; justify-content: center;">
                         <label style="cursor: pointer; padding: 4px 10px; border-radius: 4px; border: 1px solid #10b981; background: ${isPresent ? '#10b981' : 'transparent'}; color: ${isPresent ? '#fff' : '#10b981'}; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
@@ -5531,10 +5555,6 @@ function markBulkPresence(isPresent) {
         
         if (isPresent) {
             state.pointages[empId][dateKey].status = "present";
-            // On le met en MP par défaut, il pourra être modifié dans l'onglet Pointage
-            if (!state.pointages[empId][dateKey].arrivee) {
-                state.pointages[empId][dateKey].arrivee = "MP"; 
-            }
         } else {
             state.pointages[empId][dateKey].status = "absent";
             state.pointages[empId][dateKey].arrivee = "";
@@ -5564,9 +5584,6 @@ function setSuiviPresence(empId, dateKey, status) {
     
     if (status === "present") {
         state.pointages[empId][dateKey].status = "present";
-        if (!state.pointages[empId][dateKey].arrivee) {
-            state.pointages[empId][dateKey].arrivee = "MP"; 
-        }
     } else {
         state.pointages[empId][dateKey].status = "absent";
         state.pointages[empId][dateKey].arrivee = "";
@@ -5589,15 +5606,17 @@ function setSuiviPresence(empId, dateKey, status) {
 function saveSuiviMotif(empId, dateKey, value) {
     if (!state.dayDetails[empId]) state.dayDetails[empId] = {};
     if (!state.dayDetails[empId][dateKey]) state.dayDetails[empId][dateKey] = {};
-    
     state.dayDetails[empId][dateKey].note = value.trim();
     saveStateToLocalStorage();
-    
-    // Auto-actualiser le rapport s'il est déjà généré/affiché
     const reportTable = document.getElementById("suivi-report-table");
-    if (reportTable && reportTable.style.display !== "none") {
-        generatePresenceReport();
-    }
+    if (reportTable && reportTable.style.display !== "none") generatePresenceReport();
+}
+
+function saveSuiviObservation(empId, dateKey, value) {
+    if (!state.dayDetails[empId]) state.dayDetails[empId] = {};
+    if (!state.dayDetails[empId][dateKey]) state.dayDetails[empId][dateKey] = {};
+    state.dayDetails[empId][dateKey].observation = value.trim();
+    saveStateToLocalStorage();
 }
 
 function generatePresenceReport() {
@@ -6105,4 +6124,44 @@ function renderInactiveEmployeesTab() {
     updateInactiveCountBadge();
 }
 
+// Fonction pour effacer tout le pointage Suivi Présence d'un jour
+window.clearSuiviPresenceCeJour = function() {
+    const dateInput = document.getElementById("suivi-date-input");
+    if (!dateInput || !dateInput.value) return;
+    const dateVal = dateInput.value;
+    
+    // Reformater la date pour un affichage lisible
+    const dateParts = dateVal.split('-');
+    const dateAffichage = (dateParts.length === 3) ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : dateVal;
+    
+    if (!confirm(`Voulez-vous vraiment effacer TOUT le pointage du suivi présence pour le ${dateAffichage} ?\n\nAttention: Cela supprimera tous les statuts (Présent/Absent) et les observations de cette journée.`)) {
+        return;
+    }
 
+    let updated = 0;
+    state.employees.forEach(emp => {
+        if (state.pointages[emp.id] && state.pointages[emp.id][dateVal]) {
+            // Effacer le statut, mais laisser les heures réelles si elles ont été entrées depuis l'onglet Pointage
+            state.pointages[emp.id][dateVal].status = undefined;
+            updated++;
+        }
+        if (state.dayDetails[emp.id] && state.dayDetails[emp.id][dateVal]) {
+            state.dayDetails[emp.id][dateVal].note = "";
+            updated++;
+        }
+    });
+
+    if (updated > 0) {
+        saveStateToLocalStorage();
+        renderSuiviJournalier();
+        alert("Le pointage de suivi présence du " + dateAffichage + " a été effacé avec succès.");
+        
+        // Auto-actualiser le rapport s'il est affiché
+        const reportTable = document.getElementById("suivi-report-table");
+        if (reportTable && reportTable.style.display !== "none") {
+            generatePresenceReport();
+        }
+    } else {
+        alert("Aucun pointage trouvé pour le " + dateAffichage + ".");
+    }
+};
