@@ -458,10 +458,34 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("login-overlay").style.display = "flex";
     showLoginLoading(true);
     
-    setupEventListeners();
+    // Failsafe: si Firebase ne répond pas en 15s, activer le bouton login quand même
+    const loginFailsafe = setTimeout(() => {
+        showLoginLoading(false);
+        const loadingDiv = document.getElementById("firebase-loading-msg");
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '<span style="color:#f59e0b">⚠️ Connexion lente. Vous pouvez vous connecter en mode local.</span>';
+            loadingDiv.style.display = "flex";
+        }
+    }, 15000);
+    
+    try {
+        setupEventListeners();
+    } catch(err) {
+        console.error("Erreur setupEventListeners:", err);
+    }
     
     // Firebase se chargera dans loadStateFromLocalStorage et appellera refreshAllViews
-    loadStateFromLocalStorage();
+    try {
+        loadStateFromLocalStorage();
+    } catch(err) {
+        console.error("Erreur loadStateFromLocalStorage:", err);
+        showLoginLoading(false);
+        if (state.users.length === 0) {
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+            saveStateToLocalStorage();
+        }
+        clearTimeout(loginFailsafe);
+    }
     
     // Initialise les icônes Lucide
     lucide.createIcons();
@@ -577,6 +601,16 @@ function loadStateFromLocalStorage() {
     const oldSavedState = localStorage.getItem("pointage_pro_state");
 
     // 3. Connexion à Firebase avec timeout de sécurité
+    if (typeof database === 'undefined' || !database) {
+        console.warn("Firebase non disponible - mode local");
+        isFirebaseInitialized = true;
+        if (state.users.length === 0) {
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+        }
+        showLoginLoading(false);
+        refreshAllViews();
+        return;
+    }
     const dbRef = database.ref('globalState');
 
     // Timeout : si Firebase ne répond pas en 6 secondes, on utilise le mode local
@@ -1688,14 +1722,6 @@ function setupEventListeners() {
             bulkAssignModal.classList.remove("active");
             document.querySelectorAll(".emp-select-cb:checked").forEach(cb => cb.checked = false);
             toggleBulkActionBar();
-        });
-    }
-
-    // Impression du tableau de bord
-    const printRecapBtn = document.getElementById("print-recap-btn");
-    if (printRecapBtn) {
-        printRecapBtn.addEventListener("click", () => {
-            printRecapDashboard();
         });
     }
 

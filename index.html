@@ -546,15 +546,6 @@
                     </div>
                     
                     <div style="display:flex; gap:10px;">
-                        <button class="btn btn-secondary" onclick="alert('Export Excel non implémenté pour le rapport.')">
-                            <i data-lucide="download"></i> Excel
-                        </button>
-                        <button class="btn btn-secondary" onclick="printPresenceReport()">
-                            <i data-lucide="file-text"></i> PDF
-                        </button>
-                        <button class="btn btn-primary" onclick="printPresenceReport()">
-                            <i data-lucide="printer"></i> Imprimer
-                        </button>
                     </div>
                 </div>
 
@@ -617,15 +608,6 @@
                             Tableau de Bord Mensuel
                         </h3>
                         <div style="display: flex; gap: 10px;">
-                            <button id="export-synth-excel-btn" class="btn btn-secondary btn-sm" onclick="alert('Export Excel non implémenté pour la synthèse.')">
-                                <i data-lucide="download" style="width: 14px; height: 14px;"></i> Excel
-                            </button>
-                            <button id="export-synth-pdf-btn" class="btn btn-secondary btn-sm" onclick="window.print()">
-                                <i data-lucide="file-text" style="width: 14px; height: 14px;"></i> PDF
-                            </button>
-                            <button id="print-synth-btn" class="btn btn-primary btn-sm" onclick="window.print()">
-                                <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
-                            </button>
                         </div>
                     </div>
                     <div id="synth-period-label" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); background: var(--bg-input); padding: 6px 12px; border-radius: 20px; margin-bottom: 24px; display: inline-block;"></div>
@@ -810,9 +792,6 @@
                             Récapitulatif Global Mensuel
                         </h3>
                         <div style="display: flex; gap: 12px; align-items: center;">
-                            <button id="print-recap-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
-                                <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
-                            </button>
                             <button id="config-alerts-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
                                 <i data-lucide="sliders" style="width: 14px; height: 14px;"></i> Alertes
                             </button>
