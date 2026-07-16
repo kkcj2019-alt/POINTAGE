@@ -989,6 +989,8 @@ tr td input.time-input[value="MP"] {
     box-shadow: var(--shadow-lg);
     transform: translateY(20px);
     transition: transform var(--transition-normal);
+    overflow: visible;
+    position: relative;
 }
 
 .modal.active .modal-content {
@@ -1026,6 +1028,7 @@ tr td input.time-input[value="MP"] {
     flex-direction: column;
     gap: 8px;
     margin-bottom: 20px;
+    position: relative;
 }
 
 .form-group label {
@@ -1869,4 +1872,39 @@ tr.holiday-active-nuit td {
         size: A4 landscape;
         margin: 10mm;
     }
+}
+
+/* Autocomplete Dropdown */
+.autocomplete-dropdown {
+    position: absolute;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--border-radius-sm) var(--border-radius-sm);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 200;
+    display: none;
+    min-width: 200px;
+}
+.autocomplete-dropdown .ac-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color-light, rgba(0,0,0,0.05));
+    transition: background 0.15s;
+}
+.autocomplete-dropdown .ac-item:last-child {
+    border-bottom: none;
+}
+.autocomplete-dropdown .ac-item:hover,
+.ac-item.active {
+    background: var(--bg-hover, rgba(59,130,246,0.08));
+    color: var(--accent-primary, #3b82f6);
+}
+.autocomplete-dropdown .ac-dept {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 6px;
 }

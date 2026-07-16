@@ -1,3 +1,1394 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Pointage Pro - Gestion des Heures de Travail</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- App Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Modal Gestion Utilisateurs -->
+    <div class="modal" id="users-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Gestion des Utilisateurs</h2>
+                <button class="close-modal-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <div style="margin-bottom: 20px;">
+                    <h3>Ajouter un utilisateur</h3>
+                    <form id="add-user-form" style="display: flex; gap: 10px; align-items: flex-end; margin-top: 10px;">
+                        <div style="flex: 1;">
+                            <label style="font-size:0.8rem;">Identifiant</label>
+                            <input type="text" id="new-user-username" required style="width: 100%; padding: 8px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size:0.8rem;">Mot de passe</label>
+                            <input type="text" id="new-user-password" required style="width: 100%; padding: 8px;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label style="font-size:0.8rem;">Rôle</label>
+                            <select id="new-user-role" style="width: 100%; padding: 8px;">
+                                <option value="USER">Utilisateur</option>
+                                <option value="ADMIN">Administrateur</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 12px;"><i data-lucide="plus"></i></button>
+                    </form>
+                </div>
+                
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Identifiant</th>
+                                <th>Mot de passe</th>
+                                <th>Rôle</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary close-modal-btn">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-card); z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+        <div style="background:#fff; padding:32px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; text-align:center;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:24px;">
+                <div style="background:var(--primary-color); width:48px; height:48px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                    <i data-lucide="clock" style="color:#fff; width:28px; height:28px;"></i>
+                </div>
+                <h1 style="font-size:1.8rem; font-weight:700; color:var(--text-primary); margin:0;">Pointage<span style="color:var(--primary-color);">Pro</span></h1>
+            </div>
+            <form id="login-form" style="text-align:left;">
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:6px; display:block;">Identifiant</label>
+                    <input type="text" id="login-username" required style="width:100%; padding:10px 14px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-app); font-size:1rem;">
+                </div>
+                <div class="form-group" style="margin-bottom:24px;">
+                    <label style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:6px; display:block;">Mot de passe</label>
+                    <input type="password" id="login-password" required style="width:100%; padding:10px 14px; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-app); font-size:1rem;">
+                </div>
+                <p id="login-error" style="color:var(--accent-danger); font-size:0.85rem; margin-bottom:16px; display:none; text-align:center;">Identifiants incorrects.</p>
+                <button type="submit" class="btn btn-primary" style="width:100%; padding:12px; font-size:1rem; justify-content:center;">Se connecter</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="clock" class="logo-icon"></i>
+                    <span>Pointage<span>Pro</span></span>
+                </div>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="section-title">
+                    <span>Employés</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="config-structure-btn" title="Configurer Département & Fonctions" style="background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 4px; border-radius: 4px; transition: all 0.2s;">
+                            <i data-lucide="settings-2" style="width: 16px; height: 16px;"></i>
+                        </button>
+                        <button id="add-employee-btn" title="Ajouter un employé">
+                            <i data-lucide="plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="search-container">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="employee-search" placeholder="Rechercher par nom ou matricule..." autocomplete="off">
+                    <button id="clear-search-btn" class="clear-search-btn" title="Effacer" style="display:none;">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div class="show-inactive-wrapper" style="padding: 0 16px 10px; display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-muted);">
+                    <input type="checkbox" id="show-inactive-cb">
+                    <label for="show-inactive-cb" style="cursor: pointer; user-select: none;">Afficher les inactifs</label>
+                </div>
+                <div class="bulk-actions-bar" id="bulk-actions-bar" style="display: none; padding: 0 16px 12px; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button id="bulk-default-pointing-btn" class="btn btn-secondary btn-sm" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                        <i data-lucide="check-square" style="width: 13px; height: 13px;"></i> Pointage défaut
+                    </button>
+                    <button id="bulk-assign-role-btn" class="btn btn-secondary btn-sm" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                        <i data-lucide="briefcase" style="width: 13px; height: 13px;"></i> Affecter Fonction
+                    </button>
+                    <button id="bulk-custom-pointing-btn" class="btn btn-primary btn-sm" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <i data-lucide="clock" style="width: 13px; height: 13px;"></i> Pointage Groupé
+                    </button>
+                    <button id="bulk-clear-selection-btn" class="btn-text btn-sm" style="font-size: 0.72rem; cursor: pointer;">Annuler</button>
+                </div>
+                
+                <div class="employee-list-container">
+                    <ul id="employee-list" class="employee-list">
+                        <!-- Dynamically populated -->
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="theme-toggle">
+                    <button id="light-theme-btn" class="active" title="Mode Clair">
+                        <i data-lucide="sun"></i>
+                    </button>
+                    <button id="dark-theme-btn" title="Mode Sombre">
+                        <i data-lucide="moon"></i>
+                    </button>
+                </div>
+                <div class="ci-badge">
+                    <span class="flag-icon">🇨🇮</span>
+                    <span>Côte d'Ivoire (21h - 5h)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="main-content">
+            <!-- Top Dashboard Bar -->
+            <header class="top-bar">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <!-- Bouton sidebar toggle supprimé, sidebar retirée -->
+                    <div class="header-info">
+                        <h1 id="active-employee-name">Sélectionnez un employé</h1>
+                        <p id="active-employee-matricule" class="employee-matricule-header"></p>
+                        <p class="subtitle">Fiche de pointage individuelle</p>
+                    </div>
+                </div>
+                
+                <div class="header-controls">
+                    <!-- Month & Year Selectors -->
+                    <div class="selector-group">
+                        <div class="custom-select-wrapper">
+                            <select id="month-selector" class="custom-select">
+                                <option value="0">Janvier</option>
+                                <option value="1">Février</option>
+                                <option value="2">Mars</option>
+                                <option value="3">Avril</option>
+                                <option value="4">Mai</option>
+                                <option value="5">Juin</option>
+                                <option value="6">Juillet</option>
+                                <option value="7">Août</option>
+                                <option value="8">Septembre</option>
+                                <option value="9">Octobre</option>
+                                <option value="10">Novembre</option>
+                                <option value="11">Décembre</option>
+                            </select>
+                            <i data-lucide="calendar" class="select-icon"></i>
+                        </div>
+                        
+                        <div class="custom-select-wrapper">
+                            <select id="year-selector" class="custom-select">
+                                <!-- Dynamically populated -->
+                            </select>
+                            <i data-lucide="chevron-down" class="select-icon"></i>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button id="close-month-btn" class="btn btn-danger" style="display:none; padding:8px 12px; font-size:0.85rem; font-weight:600;">
+                            <i data-lucide="lock" style="width:16px; height:16px;"></i> Clôturer ce mois
+                        </button>
+                        <span id="closed-month-badge" style="display:none; background:#fee2e2; color:#b91c1c; padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:700; border:1px solid #fca5a5;">
+                            <i data-lucide="lock" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Mois Clôturé
+                        </span>
+                    </div>
+
+                    <!-- Action buttons moved to tabs -->
+                    <div class="action-buttons">
+                        <!-- User Profile Dropdown -->
+                        <div class="dropdown" style="margin-left: 12px; border-left: 1px solid var(--border-color); padding-left: 12px;">
+                            <button class="btn btn-secondary" style="border:1px solid var(--border-color); background:var(--bg-app); color:var(--text-primary);">
+                                <i data-lucide="user-circle"></i>
+                                <span id="current-username-display">User</span>
+                                <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: 4px;"></i>
+                            </button>
+                            <div class="dropdown-content">
+                                <button id="logout-btn" class="dropdown-item" type="button" style="color:var(--accent-danger);">
+                                    <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+                                    <span>Déconnexion</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Tabs Navigation -->
+            <div class="tabs-container">
+                <button class="tab-btn active" data-tab="tab-pointage">
+                    <i data-lucide="calendar-check"></i> Pointage
+                </button>
+                <button class="tab-btn" data-tab="tab-suivi">
+                    <i data-lucide="check-square"></i> Suivi Présence
+                </button>
+                <button class="tab-btn" data-tab="tab-rapport-presence">
+                    <i data-lucide="file-text"></i> Rapport Présence
+                </button>
+                <button class="tab-btn" data-tab="tab-synthese">
+                    <i data-lucide="pie-chart"></i> Synthèse Détaillée
+                </button>
+                <button class="tab-btn" data-tab="tab-ajustements">
+                    <i data-lucide="settings"></i> Ajustements & Absences
+                </button>
+                <button class="tab-btn" data-tab="tab-recap">
+                    <i data-lucide="layout-dashboard"></i> Tableau de Bord
+                </button>
+                <button class="tab-btn" data-tab="tab-parametres">
+                    <i data-lucide="database"></i> Employés & Paramètres
+                </button>
+            </div>
+
+            <!-- TAB 1: POINTAGE -->
+            <div id="tab-pointage" class="tab-content active">
+
+            <!-- Barre principale : Filtres Fonctions + Recherche Rapide -->
+            <div style="display:flex; align-items:center; gap:16px; padding: 16px 24px 0; flex-wrap:wrap;">
+                <!-- Recherche rapide travailleur -->
+                <div style="position:relative; min-width:300px;">
+                    <i data-lucide="search" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); width:20px; height:20px; color:var(--accent-day); pointer-events:none;"></i>
+                    <input type="text" id="pointage-search-input" class="search-pill-input"
+                        placeholder="🔍 Chercher un travailleur..."
+                        autocomplete="off"
+                        oninput="filterPointageSearch(this.value)">
+                    <!-- Résultats dropdown -->
+                    <div id="pointage-search-results" style="display:none; position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-lg); box-shadow:var(--shadow-lg); z-index:200; max-height:260px; overflow-y:auto; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);"></div>
+                </div>
+
+                <!-- Filtres par Fonction -->
+                <div id="pointage-fonctions-bar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; flex:1;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-right:4px;">Fonction :</span>
+                    <!-- Rempli dynamiquement par JS -->
+                </div>
+                
+                <!-- Actions Export/Print Pointage -->
+                <div class="action-buttons" style="margin-left:auto;">
+                    <div class="dropdown">
+                        <button class="btn btn-secondary">
+                            <i data-lucide="download"></i>
+                            <span>Exporter Pointage</span>
+                            <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: 4px;"></i>
+                        </button>
+                        <div class="dropdown-content" style="right:0;">
+                            <button id="export-single-btn" class="dropdown-item" type="button">
+                                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+                                <span>Employé actuel (Excel)</span>
+                            </button>
+                            <button id="export-all-btn" class="dropdown-item" type="button">
+                                <i data-lucide="users" style="width: 16px; height: 16px;"></i>
+                                <span>Tous les employés (Excel)</span>
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            <button id="export-pdf-single-btn" class="dropdown-item" type="button">
+                                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                                <span>Employé actuel (PDF)</span>
+                            </button>
+                            <button id="export-pdf-all-btn" class="dropdown-item" type="button">
+                                <i data-lucide="files" style="width: 16px; height: 16px;"></i>
+                                <span>Tous les employés (PDF)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="dropdown">
+                        <button class="btn btn-primary">
+                            <i data-lucide="printer"></i>
+                            <span>Imprimer Pointage</span>
+                            <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: 4px;"></i>
+                        </button>
+                        <div class="dropdown-content" style="right:0;">
+                            <button id="print-single-btn" class="dropdown-item" type="button">
+                                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
+                                <span>Employé actuel</span>
+                            </button>
+                            <button id="print-all-btn" class="dropdown-item" type="button">
+                                <i data-lucide="users" style="width: 16px; height: 16px;"></i>
+                                <span>Tous les employés (Lot)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- KPI Cards Summary -->
+            <section class="kpi-container">
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper jour">
+                        <i data-lucide="sun"></i>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Heures de Jour (05h - 21h)</span>
+                        <span id="kpi-day-hours" class="kpi-value">00:00</span>
+                    </div>
+                </div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper nuit">
+                        <i data-lucide="moon"></i>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Heures de Nuit (21h - 05h)</span>
+                        <span id="kpi-night-hours" class="kpi-value">00:00</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon-wrapper reg-nuit">
+                        <i data-lucide="calendar-check"></i>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Jours Travaillés</span>
+                        <span id="kpi-days-worked" class="kpi-value">0 jours</span>
+                    </div>
+                </div>
+                
+                <div class="kpi-card highlight">
+                    <div class="kpi-icon-wrapper total">
+                        <i data-lucide="award"></i>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Total Heures Cumulées</span>
+                        <span id="kpi-total-hours" class="kpi-value">00:00</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card" id="kpi-transport-card" style="display:none; border-left: 3px solid #0ea5e9;">
+                    <div class="kpi-icon-wrapper" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                        <i data-lucide="bus"></i>
+                    </div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Transport du Mois</span>
+                        <span id="kpi-transport" class="kpi-value" style="color:#0284c7;">—</span>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Table Container -->
+            <div class="table-container">
+                <div class="table-actions">
+                    <div class="info-tip">
+                        <i data-lucide="info"></i>
+                        <span>Saisissez les heures sans séparateur (ex: 740 pour 07:40, 1800 pour 18:00)</span>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 6px; background: rgba(139, 92, 246, 0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(139, 92, 246, 0.2);">
+                            <span style="font-size:0.8rem; font-weight:600; color:var(--accent-night);">Nuit ?</span>
+                            <label class="night-toggle" style="margin: 0;">
+                                <input type="checkbox" id="show-night-columns-cb">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <button id="apply-default-month-btn" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.85rem; background-color: var(--accent-success); color: white;">
+                            <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Appliquer 173.33h (173h20)
+                        </button>
+                        <button id="clear-month-btn" class="btn-text">
+                            <i data-lucide="trash-2"></i> Effacer ce mois
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="pointage-table">
+                        <thead>
+                            <tr>
+                                <th class="col-day">Jour</th>
+                                <th class="col-toggle">Statut</th>
+                                <th class="col-rendement-header">Rendement</th>
+                                <th colspan="4" class="col-header-group jour">Shift Jour</th>
+                                <th colspan="4" class="col-header-group nuit night-header">Shift Nuit (Optionnel)</th>
+                                <th class="col-notes-header">Obs.</th>
+                                <th colspan="3" class="col-header-group totaux">Calculs &amp; Durées</th>
+                            </tr>
+                            <tr class="sub-headers">
+                                <th>Date</th>
+                                <!-- Status -->
+                                <th>Présence</th>
+                                <th class="col-rendement-header">Rendement ?</th>
+                                <!-- Day shift -->
+                                <th>Arrivée</th>
+                                <th>Pause</th>
+                                <th>Reprise</th>
+                                <th>Fin</th>
+                                <!-- Night shift toggle -->
+                                <th>Nuit ?</th>
+                                <!-- Night shift -->
+                                <th class="night-header">Début</th>
+                                <th class="night-header">Pause</th>
+                                <th class="night-header">Reprise</th>
+                                <th class="night-header">Fin</th>
+                                <!-- Observations text column -->
+                                <th class="notes-sub-header">Remarques</th>
+                                <!-- Totals -->
+                                <th>H. Jour<br><small style="font-weight:400;color:var(--text-muted);">(05h-21h)</small></th>
+                                <th>H. Nuit<br><small style="font-weight:400;color:var(--text-muted);">(21h-05h)</small></th>
+                                <th class="highlight-col">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Dynamically generated rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Warning Alert Panel for Unworked Days -->
+            <div id="unworked-alert-panel" class="card shadow-sm" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; border-radius: var(--border-radius-lg); padding: 16px; margin-top: 20px;">
+                <div style="display: flex; gap: 12px; align-items: flex-start; justify-content: space-between;">
+                    <div style="display: flex; gap: 12px; align-items: flex-start;">
+                        <i data-lucide="alert-triangle" style="color: #d97706; flex-shrink: 0; width: 20px; height: 20px;"></i>
+                        <div>
+                            <h4 style="font-size: 0.9rem; font-weight: 600; color: #92400e; margin-bottom: 4px; margin-top: 0;">Jours ouvrables non pointés</h4>
+                            <p id="unworked-alert-text" style="font-size: 0.8rem; color: #b45309; line-height: 1.4; margin: 0;"></p>
+                        </div>
+                    </div>
+                    <button id="validate-absences-btn" class="btn btn-primary btn-sm" style="background-color: #d97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; cursor: pointer; white-space: nowrap;">
+                        Valider ces absences
+                    </button>
+                </div>
+            </div>
+
+            </div> <!-- End of tab-pointage -->
+            
+            <!-- TAB SUIVI PRESENCE (DAILY POINTAGE ONLY) -->
+            <div id="tab-suivi" class="tab-content">
+                <div class="section-title" style="margin-top: 10px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="check-square"></i> Pointage Journalier Rapide
+                </div>
+
+                <!-- Filtre par Département -->
+                <div style="margin-top: 10px; margin-bottom: 15px;">
+                    <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 5px;">Filtrer par Département :</label>
+                    <div id="suivi-depts-filter" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <!-- Rempli dynamiquement -->
+                    </div>
+                </div>
+
+                <div class="top-controls" style="margin-top: 15px;">
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; width: 100%;">
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label>Date de pointage</label>
+                            <input type="date" id="suivi-date-input" class="modern-input" onchange="renderSuiviJournalier()">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 0; display: none;">
+                            <button class="btn btn-primary" onclick="renderSuiviJournalier()">
+                                <i data-lucide="refresh-cw"></i> Actualiser
+                            </button>
+                        </div>
+                        <div style="flex-grow: 1;"></div>
+                        <div class="form-group" style="margin-bottom: 0; display: flex; gap: 10px;">
+                            <button class="btn btn-success" onclick="markBulkPresence(true)">
+                                <i data-lucide="check-circle"></i> Marquer Présents
+                            </button>
+                            <button class="btn btn-danger" onclick="markBulkPresence(false)">
+                                <i data-lucide="x-circle"></i> Marquer Absents
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 1 : À POINTER -->
+                <h3 style="margin-top: 25px; margin-bottom: 10px; font-size: 1rem; color: var(--accent-day); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="clock"></i> Travailleurs à pointer (<span id="suivi-pending-count">0</span>)
+                </h3>
+                <div class="table-container" style="margin-top: 10px;">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;"><input type="checkbox" id="suivi-select-all" onchange="toggleSuiviSelectAll(this)"></th>
+                                <th>Matricule</th>
+                                <th>Employé</th>
+                                <th>Département</th>
+                                <th>Statut Actuel</th>
+                                <th>Motif (Si absent)</th>
+                                <th>Action Rapide</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suivi-table-body">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- SECTION 2 : DÉJÀ POINTÉS -->
+                <h3 style="margin-top: 35px; margin-bottom: 10px; font-size: 1rem; color: var(--accent-total); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="check-circle-2"></i> Travailleurs déjà pointés pour ce jour (<span id="suivi-done-count">0</span>)
+                </h3>
+                <div class="table-container" style="margin-top: 10px; margin-bottom: 30px;">
+                    <table class="modern-table" style="opacity: 0.9;">
+                        <thead>
+                            <tr>
+                                <th>Matricule</th>
+                                <th>Employé</th>
+                                <th>Département</th>
+                                <th>Statut Enregistré</th>
+                                <th>Motif (Si absent)</th>
+                                <th>Modifier le Pointage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suivi-table-done-body">
+                            <!-- Rempli dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </div> <!-- End of tab-suivi -->
+
+            <!-- TAB RAPPORT PRESENCE (REPORT ONLY) -->
+            <div id="tab-rapport-presence" class="tab-content">
+                <div class="section-title" style="margin-top: 10px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
+                    <i data-lucide="file-bar-chart"></i> Rapport de Présence sur Période
+                </div>
+                
+                <div class="filters-section" style="display: flex; gap: 16px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; margin-top:15px;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label" style="margin-bottom: 8px;">Période du</label>
+                        <input type="date" id="suivi-report-start" class="form-input" onchange="generatePresenceReport()">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label class="form-label" style="margin-bottom: 8px;">Au</label>
+                        <input type="date" id="suivi-report-end" class="form-input" onchange="generatePresenceReport()">
+                    </div>
+                    <div style="flex: 1; min-width: 300px; position:relative;">
+                        <label class="form-label" style="margin-bottom: 8px;">Employé (Optionnel)</label>
+                        <i data-lucide="search" style="position:absolute; left:16px; top:38px; width:18px; height:18px; color:var(--accent-day); pointer-events:none;"></i>
+                        <input type="text" id="suivi-report-emp" class="search-pill-input" style="width: 100%;" placeholder="Rechercher nom ou matricule..." list="rapport-emp-list" oninput="generatePresenceReport()">
+                        <datalist id="rapport-emp-list"></datalist>
+                    </div>
+                    
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn btn-secondary" onclick="alert('Export Excel non implémenté pour le rapport.')">
+                            <i data-lucide="download"></i> Excel
+                        </button>
+                        <button class="btn btn-secondary" onclick="printPresenceReport()">
+                            <i data-lucide="file-text"></i> PDF
+                        </button>
+                        <button class="btn btn-primary" onclick="printPresenceReport()">
+                            <i data-lucide="printer"></i> Imprimer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Boutons de filtre rapide département pour rapport -->
+                <div id="rapport-depts-filter" style="display: flex; gap: 8px; margin-top: 15px; margin-bottom: 5px; flex-wrap: wrap;"></div>
+
+                <!-- Boutons de filtre rapide de colonnes -->
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn btn-sm btn-secondary active-view-btn" id="view-mixte-btn" onclick="setReportView('mixte')">
+                        <i data-lucide="layout-grid"></i> Vue Mixte
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="view-absence-btn" onclick="setReportView('absence')">
+                        <i data-lucide="user-x"></i> Détail Absence
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="view-presence-btn" onclick="setReportView('presence')">
+                        <i data-lucide="user-check"></i> Détail Présence
+                    </button>
+                </div>
+
+                <div class="table-container" style="margin-top: 20px; margin-bottom: 30px; overflow-x: auto;">
+                    <div id="print-report-container">
+                        <div class="print-header-info" style="display: none; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px;">
+                            <h2 style="margin: 0; font-family: var(--font-heading);">Rapport de Présence Journalier</h2>
+                            <p style="margin: 5px 0 0 0; color: #666;" id="print-report-dates"></p>
+                            <p style="margin: 5px 0 0 0; color: #333; font-weight: 600;" id="print-report-emp-name"></p>
+                        </div>
+                        <table class="modern-table" id="suivi-report-table" style="display: none; table-layout: auto; width: 100%;">
+                            <colgroup>
+                                <col style="width: 140px;">
+                                <col style="width: 60px;">
+                                <col style="width: 60px;">
+                                <col style="min-width: 500px;">
+                                <col style="width: 100px;">
+                                <col style="width: 130px;">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Employé</th>
+                                    <th class="col-expected" style="text-align:center;">J. Att.</th>
+                                    <th class="col-present" style="text-align:center;">J. Prés.</th>
+                                    <th class="col-absences">Détail Absences</th>
+                                    <th>Taux</th>
+                                    <th>Obs.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="suivi-report-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> <!-- End of tab-rapport-presence -->
+
+            <!-- TAB 2: SYNTHÈSE DÉTAILLÉE -->
+            <div id="tab-synthese" class="tab-content">
+                <div class="card shadow-sm" style="background: var(--bg-card); border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="bar-chart-3" style="color: var(--accent-total);"></i>
+                            Tableau de Bord Mensuel
+                        </h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="export-synth-excel-btn" class="btn btn-secondary btn-sm" onclick="alert('Export Excel non implémenté pour la synthèse.')">
+                                <i data-lucide="download" style="width: 14px; height: 14px;"></i> Excel
+                            </button>
+                            <button id="export-synth-pdf-btn" class="btn btn-secondary btn-sm" onclick="window.print()">
+                                <i data-lucide="file-text" style="width: 14px; height: 14px;"></i> PDF
+                            </button>
+                            <button id="print-synth-btn" class="btn btn-primary btn-sm" onclick="window.print()">
+                                <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
+                            </button>
+                        </div>
+                    </div>
+                    <div id="synth-period-label" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); background: var(--bg-input); padding: 6px 12px; border-radius: 20px; margin-bottom: 24px; display: inline-block;"></div>
+                    
+                    <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 16px; margin-bottom: 30px;">
+                        <div class="stat-card" style="background: #eff6ff; border: 1px solid #dbeafe; padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #1e40af; margin-bottom: 8px;">Heures Payées</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #1e3a8a;" id="synth-total-paid">00:00</div>
+                        </div>
+                        <div class="stat-card" style="background: #ecfdf5; border: 1px solid #d1fae5; padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #065f46; margin-bottom: 8px;">Heures de Nuit</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #064e3b;" id="synth-total-night">00:00</div>
+                        </div>
+                        <div class="stat-card" style="background: #fff7ed; border: 1px solid #ffedd5; padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #9a3412; margin-bottom: 8px;">Heures à Rattraper</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #7c2d12;" id="synth-to-recover">00:00</div>
+                        </div>
+                        <div class="stat-card" style="background: #fef2f2; border: 1px solid #fee2e2; padding: 20px; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.8rem; font-weight: 600; color: #991b1b; margin-bottom: 8px;">Jours d'Absence</div>
+                            <div style="font-size: 1.8rem; font-weight: 800; color: #7f1d1d;" id="synth-absences-count">0</div>
+                        </div>
+                        <!-- Nouvelle case: Jours payés non travaillés -->
+                        <div id="synth-paid-unworked-card" class="stat-card" style="background: #fefce8; border: 2px solid #fde047; padding: 20px; border-radius: 12px; text-align: center; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; display: none;"
+                            onclick="document.querySelector('[data-tab=tab-ajustements]').click()" title="Cliquer pour voir le détail dans l'onglet Ajustements">
+                            <div style="font-size: 0.75rem; font-weight: 600; color: #854d0e; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                <span>⚠</span> Payés Non Travaillés
+                            </div>
+                            <div style="font-size: 1.6rem; font-weight: 800; color: #713f12;" id="synth-paid-unworked">0j — 00:00</div>
+                            <div style="font-size: 0.65rem; color: #a16207; margin-top: 6px; font-style: italic;">Cliquer → Détail ajustements</div>
+                        </div>
+                    </div>
+                    
+                    <div style="overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600; color: #374151;">Date</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600; color: #374151;">Statut</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Jour (H)</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Nuit (H)</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="synth-table-body">
+                            </tbody>
+                            <tfoot id="synth-table-footer">
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: AJUSTEMENTS & ABSENCES -->
+            <div id="tab-ajustements" class="tab-content">
+                <!-- Unified Card: Absences & Rattrapages -->
+                <div class="card shadow-sm" style="background: var(--bg-card); border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); padding: 20px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.15rem; display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 700; color: var(--text-primary);">
+                            <i data-lucide="sliders" style="color: var(--accent-primary); width: 20px; height: 20px;"></i>
+                            Ajustements, Absences & Heures à Rattraper
+                        </h3>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                        <!-- Left Side: Lists of Registered Adjustments & Debts -->
+                        <div style="flex: 1.2; min-width: 300px; display: flex; flex-direction: column; gap: 20px;">
+                            <!-- Section 1: Registered Events & Absences -->
+                            <div>
+                                <h4 style="font-size: 0.9rem; font-weight: 600; margin: 0 0 12px; color: var(--text-secondary);">Périodes & Événements déclarés</h4>
+                                <div style="max-height: 200px; overflow-y: auto; background: var(--bg-input); border-radius: 6px; padding: 10px; border: 1px solid var(--border-color);">
+                                    <ul id="absence-periods-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.8rem;">
+                                        <!-- Populated in JS -->
+                                    </ul>
+                                </div>
+                            </div>
+                            
+                            <!-- Section 2: Debts Tracking -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                    <h4 style="font-size: 0.9rem; font-weight: 600; margin: 0; color: var(--text-secondary);">Suivi des Heures à Rattraper</h4>
+                                    <span id="rattrapage-balance-badge" class="badge" style="background: var(--bg-input); padding: 4px 8px; border-radius: 12px; font-weight: 700; font-size: 0.8rem; color: var(--text-primary); border: 1px solid var(--border-color);">Solde : 0h</span>
+                                </div>
+                                <div style="max-height: 180px; overflow-y: auto; background: var(--bg-input); border-radius: 6px; padding: 10px; border: 1px solid var(--border-color); margin-bottom: 12px;">
+                                    <ul id="rattrapage-debts-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.8rem;">
+                                        <!-- Populated in JS -->
+                                    </ul>
+                                </div>
+                                <div style="background: rgba(59, 130, 246, 0.05); border: 1px dashed var(--border-input-focus); border-radius: var(--border-radius-md); padding: 12px;">
+                                    <label for="rattrapage-month-hours" style="font-size: 0.75rem; font-weight: 600; display: block; margin-bottom: 4px; color: var(--text-primary);">Heures récupérées ce mois :</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <input type="number" id="rattrapage-month-hours" min="0" step="0.25" placeholder="0" style="padding: 6px; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 80px; background: var(--bg-card); color: var(--text-primary);">
+                                        <span style="font-size: 0.75rem; color: var(--text-muted);">(Déduit du total payé ce mois)</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: Unified Declaration Form -->
+                        <div style="flex: 1; min-width: 280px; background: var(--bg-input); border-radius: var(--border-radius-md); padding: 16px; border: 1px solid var(--border-color);">
+                            <h4 id="absence-form-title" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; margin-top: 0;">Déclarer un événement / absence</h4>
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Nature de l'événement</label>
+                                <select id="absence-type" class="custom-select" style="padding: 6px; font-size: 0.8rem; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
+                                    <option value="faute_entreprise">Faute Entreprise (Payé, À rattraper)</option>
+                                    <option value="absent">Absence Injustifiée (Non Payé, À rattraper)</option>
+                                    <option value="permission">Permission (Non Payé, Non à rattraper)</option>
+                                    <option value="permission_payee">Permission Payée (Payé, Non à rattraper)</option>
+                                    <option value="malade">Maladie (Payé)</option>
+                                    <option value="accident">Accident de Travail (Payé)</option>
+                                    <option value="conge">Congé (Payé)</option>
+                                    <option value="autre">Autre (Non Payé)</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+                                    <input type="checkbox" id="absence-is-paid" checked>
+                                    <label for="absence-is-paid" style="font-size: 0.7rem; cursor: pointer; user-select: none;">Payé (8h/j)</label>
+                                </div>
+                                <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+                                    <input type="checkbox" id="absence-is-recover" checked>
+                                    <label for="absence-is-recover" style="font-size: 0.7rem; cursor: pointer; user-select: none;">À rattraper</label>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Date de début</label>
+                                    <input type="date" id="absence-start" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Date de fin</label>
+                                    <input type="date" id="absence-end" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label for="absence-reason" style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Motif / Cause (obligatoire)</label>
+                                <input type="text" id="absence-reason" placeholder="Ex: Panne de groupe électrogène, RTT..." style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div id="absence-action-area">
+                                <button id="absence-add-btn" type="button" class="btn btn-primary btn-sm" style="width: 100%; padding: 8px;">Enregistrer l'ajustement</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Dashboard: Jours Fériés -->
+                <div class="card shadow-sm" style="background: var(--bg-card); border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); padding: 20px; margin-bottom: 24px;">
+                    <h3 style="font-family: var(--font-heading); font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <i data-lucide="umbrella" style="color: var(--accent-day); width: 18px; height: 18px;"></i>
+                        Jours Fériés du Mois
+                    </h3>
+                    
+                    <div style="display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap;">
+                        <div style="flex: 1.2; max-height: 200px; overflow-y: auto; min-width: 250px;">
+                            <ul id="holidays-list" style="list-style: none; padding: 0; margin: 0; font-size: 0.8rem;">
+                                <!-- Populated in JS -->
+                            </ul>
+                        </div>
+                        
+                        <!-- Formulaire d'ajout de férié -->
+                        <div style="flex: 1; background: var(--bg-input); border-radius: var(--border-radius-md); padding: 12px; min-width: 200px;">
+                            <h4 style="font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; margin-top: 0;">Ajouter un férié</h4>
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Jour du mois</label>
+                                <select id="holiday-add-day" class="custom-select" style="padding: 6px; font-size: 0.8rem; width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);"></select>
+                            </div>
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Nom / Motif</label>
+                                <input type="text" id="holiday-add-label" placeholder="Ex: Tabaski" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <button id="holiday-add-btn" type="button" class="btn btn-primary btn-sm" style="width: 100%; padding: 8px;">Ajouter</button>
+                        </div>
+                    </div>
+                </div>
+            </div> <!-- End of tab-ajustements -->
+
+            <!-- TAB 4: TABLEAU DE BORD (RECAP) -->
+            <div id="tab-recap" class="tab-content">
+                <div class="card shadow-sm" style="background: var(--bg-card); border-radius: var(--border-radius-lg); border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="users" style="color: var(--accent-primary);"></i>
+                            Récapitulatif Global Mensuel
+                        </h3>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button id="print-recap-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
+                            </button>
+                            <button id="config-alerts-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+                                <i data-lucide="sliders" style="width: 14px; height: 14px;"></i> Alertes
+                            </button>
+                            <div id="recap-period-label" style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); background: var(--bg-input); padding: 6px 12px; border-radius: 20px;"></div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center; flex-wrap: wrap;">
+                        <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; display: block;">Filtrer par Département</label>
+                            <select id="recap-filter-departement" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem;">
+                                <option value="ALL">Tous les départements</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                            <label style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; display: block;">Filtrer par Fonction</label>
+                            <select id="recap-filter-fonction" style="width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-size: 0.85rem;">
+                                <option value="ALL">Toutes les fonctions</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Alert Banners -->
+                    <div id="recap-alerts-container" style="display: flex; gap: 12px; margin-bottom: 20px;">
+                        <!-- Dynamically populated banner stats -->
+                    </div>
+                    
+                    <div style="overflow-x: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;" class="hover-table">
+                            <thead>
+                                <tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600; color: #374151;">Employé</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600; color: #374151;">Matricule</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Présent</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Absent</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">H. Jour</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">H. Nuit</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Total Payer</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Transport</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;">Statut Alerte</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600; color: #374151;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="recap-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB EMPLOYÉS & PARAMÈTRES -->
+            <div id="tab-parametres" class="tab-content">
+                <!-- En-tête et Actions -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h2 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 700; margin: 0; color: var(--text-primary);">Base de Données Employés</h2>
+                        <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 0.95rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
+                    </div>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <button id="manage-users-btn" class="btn btn-secondary" style="display: none; align-items: center; gap: 8px;">
+                            <i data-lucide="users"></i> Gérer Utilisateurs
+                        </button>
+                        <button class="btn btn-secondary" onclick="openStructureConfigModal()">
+                            <i data-lucide="building-2"></i> Gérer Depts &amp; Fonctions
+                        </button>
+                        <button id="add-emp-params-btn" class="btn btn-primary" onclick="document.getElementById('add-employee-modal').classList.add('active')">
+                            <i data-lucide="plus"></i> Ajouter un Employé
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section KPIs (Tableau de bord) -->
+                <div style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 12px; gap: 8px;">
+                        <i data-lucide="pie-chart" style="color: var(--accent-primary); width: 20px; height: 20px;"></i>
+                        <h3 style="margin: 0; font-size: 1.1rem; font-family: var(--font-heading); font-weight: 600;">Répartition par Département</h3>
+                    </div>
+                    <div id="params-dept-summary" style="display: flex; gap: 16px; flex-wrap: wrap;">
+                        <!-- Rempli dynamiquement par JS -->
+                    </div>
+                </div>
+
+                <!-- Navigation Segmentée (Segmented Control) -->
+                <div style="display: flex; justify-content: center; margin-bottom: 24px;">
+                    <div style="display: inline-flex; background: var(--bg-card); padding: 4px; border-radius: 50px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                        <button id="params-sub-tab-actifs" onclick="switchParamsSubTab('actifs')" style="padding: 10px 24px; font-size: 0.95rem; font-weight: 600; border: none; background: var(--accent-primary); color: white; border-radius: 50px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="users" style="width: 16px; height: 16px;"></i> Actifs
+                        </button>
+                        <button id="params-sub-tab-inactifs" onclick="switchParamsSubTab('inactifs')" style="padding: 10px 24px; font-size: 0.95rem; font-weight: 600; border: none; background: transparent; color: var(--text-muted); border-radius: 50px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="user-x" style="width: 16px; height: 16px;"></i> Inactifs
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PANEL : EMPLOYÉS ACTIFS -->
+                <div id="params-panel-actifs">
+                    <!-- Barre de recherche + filtre dept -->
+                    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; background: var(--bg-card); padding: 16px 20px; border-radius: var(--border-radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);">
+                        <div style="position: relative; flex: 1; min-width: 300px;">
+                            <i data-lucide="search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted); pointer-events: none;"></i>
+                            <input type="text" id="params-search" class="search-pill-input" placeholder="Rechercher par nom, matricule ou fonction..." oninput="renderParamsTable()" style="width: 100%; padding: 12px 16px 12px 42px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all 0.2s;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i data-lucide="filter" style="color: var(--text-muted); width: 18px; height: 18px;"></i>
+                            <select id="params-dept-filter" style="min-width: 200px; padding: 12px 20px; border: 1px solid var(--border-color); border-radius: 50px; background: var(--bg-input); color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all 0.2s; cursor: pointer;" onchange="renderParamsTable()">
+                                <option value="all">Tous les départements</option>
+                                <!-- Rempli dynamiquement -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-container" style="border-radius: var(--border-radius-lg); overflow: hidden; box-shadow: var(--shadow-md);">
+                        <table class="modern-table" id="params-employees-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: var(--bg-card); border-bottom: 2px solid var(--border-color);">
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Employé</th>
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Fonction</th>
+                                    <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Département</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Transport</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Date Embauche</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Statut</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="params-employees-body">
+                                <!-- Rempli dynamiquement -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PANEL : EMPLOYÉS INACTIFS -->
+                <div id="params-panel-inactifs" style="display:none;">
+                    <!-- Filtre mois/année -->
+                    <div style="display:flex; align-items:center; gap:14px; margin-bottom:24px; background:var(--bg-card); padding:14px 20px; border-radius:var(--border-radius-lg); border:1px solid var(--border-color); box-shadow:var(--shadow-sm); flex-wrap:wrap;">
+                        <i data-lucide="calendar" style="width:18px;height:18px;color:var(--accent-danger);"></i>
+                        <span style="font-size:0.9rem;font-weight:600;color:var(--text-secondary);">Afficher les inactifs pour&nbsp;:</span>
+                        <select id="inactive-filter-month" onchange="renderInactiveEmployeesTab()" style="padding:8px 14px;border:1px solid var(--border-color);border-radius:50px;background:var(--bg-input);color:var(--text-primary);font-size:0.9rem;outline:none;">
+                            <!-- Rempli dynamiquement -->
+                        </select>
+                        <select id="inactive-filter-year" onchange="renderInactiveEmployeesTab()" style="padding:8px 14px;border:1px solid var(--border-color);border-radius:50px;background:var(--bg-input);color:var(--text-primary);font-size:0.9rem;outline:none;">
+                            <!-- Rempli dynamiquement -->
+                        </select>
+                        <span id="inactive-count-badge" style="background:#fee2e2;color:#b91c1c;padding:4px 14px;border-radius:50px;font-size:0.85rem;font-weight:700;border:1px solid #fecaca;"></span>
+                    </div>
+
+                    <!-- Contenu liste inactifs -->
+                    <div id="inactive-emp-list-container" class="table-container">
+                        <!-- Rempli dynamiquement par renderInactiveEmployeesTab() -->
+                    </div>
+                </div>
+
+            </div> <!-- End tab-parametres -->
+
+        </main>
+    </div>
+
+    <!-- TAB PARAMETRES (injecté dans main via JS car hors main) -->
+
+    <div id="add-employee-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ajouter un nouvel employé</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <form id="add-employee-form">
+                <div class="form-group">
+                    <label for="employee-matricule-input">Matricule <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="text" id="employee-matricule-input" placeholder="Ex: MAT-001" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="employee-name-input">Nom complet de l'employé <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="text" id="employee-name-input" placeholder="Ex: Jean Kouassi" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
+                    <select id="employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="date" id="employee-start-date-input" required class="modern-input">
+                </div>
+                <div class="form-group">
+                    <label for="employee-departement-input">Département</label>
+                    <input type="text" id="employee-departement-input" readonly disabled placeholder="Déterminé automatiquement..." style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-muted); cursor: not-allowed;">
+                </div>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                    <input type="checkbox" id="employee-default-schedule-cb" style="width: auto;">
+                    <label for="employee-default-schedule-cb" style="margin: 0; cursor: pointer;">Appliquer les horaires standards par défaut (08:00-12:00, 13:00-17:00)</label>
+                </div>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                    <input type="checkbox" id="employee-rendement-cb" style="width: auto;">
+                    <label for="employee-rendement-cb" style="margin: 0; cursor: pointer;">Travailleur au rendement (crédit auto 8h/jour sans horaires)</label>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label for="employee-transport-input" style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:4px; display:block;">
+                        <i data-lucide="bus" style="width:14px;height:14px;vertical-align:middle;"></i>
+                        Transport mensuel base (proraté sur jours présents) <span style="color:var(--text-muted); font-size:0.78rem;">— Défaut: 30 000 FCFA</span>
+                    </label>
+                    <input type="number" id="employee-transport-input" placeholder="30000" min="0" step="any"
+                        style="width:100%; padding:8px 12px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); font-size:0.9rem;">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Employee Modal -->
+    <div id="edit-employee-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifier l'employé</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <form id="edit-employee-form">
+                <input type="hidden" id="edit-employee-id">
+                <div class="form-group">
+                    <label for="edit-employee-matricule-input">Matricule <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="text" id="edit-employee-matricule-input" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="edit-employee-name-input">Nom complet <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="text" id="edit-employee-name-input" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="edit-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
+                    <select id="edit-employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="date" id="edit-employee-start-date-input" required class="modern-input">
+                </div>
+                <div class="form-group">
+                    <label for="edit-employee-departement-input">Département</label>
+                    <input type="text" id="edit-employee-departement-input" readonly disabled placeholder="Déterminé automatiquement..." style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-muted); cursor: not-allowed;">
+                </div>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                    <input type="checkbox" id="edit-employee-default-schedule-cb" style="width: auto;">
+                    <label for="edit-employee-default-schedule-cb" style="margin: 0; cursor: pointer;">Appliquer les horaires standards par défaut (08:00-12:00, 13:00-17:00)</label>
+                </div>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                    <input type="checkbox" id="edit-employee-rendement-cb" style="width: auto;">
+                    <label for="edit-employee-rendement-cb" style="margin: 0; cursor: pointer;">Travailleur au rendement (crédit auto 8h/jour sans horaires)</label>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label for="edit-employee-transport-input" style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:4px; display:block;">
+                        <i data-lucide="bus" style="width:14px;height:14px;vertical-align:middle;"></i>
+                        Transport mensuel base (proraté sur jours présents) <span style="color:var(--text-muted); font-size:0.78rem;">— Défaut: 30 000 FCFA</span>
+                    </label>
+                    <input type="number" id="edit-employee-transport-input" placeholder="30000" min="0" step="any"
+                        style="width:100%; padding:8px 12px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); font-size:0.9rem;">
+                </div>
+                <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 12px;">
+                    <input type="checkbox" id="edit-employee-active-cb" checked style="width: auto;">
+                    <label for="edit-employee-active-cb" style="margin: 0; cursor: pointer;">Employé actif</label>
+                </div>
+                <div class="form-group" id="inactivation-month-group" style="display: none; margin-top: 10px;">
+                    <label for="edit-employee-inact-month">Dernier mois d'activité (Mois/Année) <span style="color: var(--accent-danger);">*</span></label>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="edit-employee-inact-month" class="custom-select" style="flex: 2; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);"></select>
+                        <select id="edit-employee-inact-year" class="custom-select" style="flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);"></select>
+                    </div>
+                </div>
+                <div class="modal-footer" style="margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Day Details Modal -->
+    <div id="day-details-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="day-details-title">Détails du Jour</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <form id="day-details-form">
+                <input type="hidden" id="day-details-date">
+                
+                <!-- Faits Marquants -->
+                <div class="form-group">
+                    <label for="day-details-note">Faits marquants / Notes de la journée</label>
+                    <textarea id="day-details-note" placeholder="Ex: Surchauffe de la machine, retard de livraison, etc." rows="3" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 8px; font-family: inherit; font-size: 0.9rem; resize: vertical; background: var(--bg-card); color: var(--text-primary);"></textarea>
+                </div>
+                
+                <!-- Événement Spécial -->
+                <div style="border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px;">
+                    <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="day-details-event-active-cb" style="width: auto;">
+                        <label for="day-details-event-active-cb" style="margin: 0; cursor: pointer; font-weight: 600;">Événement spécial survenu ce jour</label>
+                    </div>
+                    
+                    <div id="day-details-event-details" style="display: none; margin-top: 12px; padding-left: 20px; border-left: 2px solid var(--accent-day);">
+                        <div class="form-group">
+                            <label for="day-details-event-name">Nature / Nom de l'événement</label>
+                            <input type="text" id="day-details-event-name" placeholder="Ex: Séminaire, Grève générale, Fête d'entreprise" style="background: var(--bg-card); color: var(--text-primary);">
+                        </div>
+                        <div class="form-group checkbox-group" style="display: flex; align-items: center; gap: 8px; margin-top: 10px;">
+                            <input type="checkbox" id="day-details-event-worked-cb" checked style="width: auto;">
+                            <label for="day-details-event-worked-cb" style="margin: 0; cursor: pointer;">Considérer comme jour travaillé (8h)</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                    <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Batch Print Container -->
+    <div id="print-batch-container" class="print-batch-only"></div>
+
+    <!-- Validate Absences Modal -->
+    <div id="validate-absences-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Valider les absences</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div style="padding: 10px 0; font-size: 0.9rem; color: var(--text-muted);">
+                Sélectionnez les jours à marquer comme "Absent" :
+            </div>
+            <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
+                    <input type="checkbox" id="validate-absences-select-all" checked>
+                    Tout sélectionner
+                </label>
+            </div>
+            <div id="validate-absences-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <!-- Filled dynamically -->
+            </div>
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" id="confirm-validate-absences-btn" class="btn btn-primary" style="background-color: #d97706; border-color: #d97706;">Valider la sélection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Settings Alertes Absences -->
+    <div id="alert-settings-modal" class="modal">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Configuration des Alertes d'Absence</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">
+                    Définissez les seuils d'absence (en jours) pour déclencher les alertes dans le tableau de bord.
+                </p>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="color:#d97706; font-weight:600;"><i data-lucide="alert-triangle" style="width:14px;height:14px;vertical-align:middle;"></i> Avertissement</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="number" id="alert-warn-min" placeholder="Min" min="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+                        <span>à</span>
+                        <input type="number" id="alert-warn-max" placeholder="Max" min="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="color:#ea580c; font-weight:600;"><i data-lucide="help-circle" style="width:14px;height:14px;vertical-align:middle;"></i> À conseiller</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="number" id="alert-advise-min" placeholder="Min" min="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+                        <span>à</span>
+                        <input type="number" id="alert-advise-max" placeholder="Max" min="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="color:#e11d48; font-weight:600;"><i data-lucide="x-circle" style="width:14px;height:14px;vertical-align:middle;"></i> À libérer</label>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span>≥</span>
+                        <input type="number" id="alert-release-min" placeholder="Min" min="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #cbd5e1;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" class="btn btn-primary" id="save-alert-settings-btn">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal: Configuration Structure Entreprise (Départements et Fonctions) -->
+    <div id="config-structure-modal" class="modal">
+        <div class="modal-content" style="max-width: 750px; width: 90%;">
+            <div class="modal-header">
+                <h2>Structure de l'Entreprise (Départements & Fonctions)</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0; display: flex; gap: 20px; flex-wrap: wrap;">
+                <!-- Left: Departments -->
+                <div style="flex: 1; min-width: 280px; border-right: 1px solid var(--border-color); padding-right: 20px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="building" style="color: var(--accent-primary); width:18px; height:18px;"></i>
+                        Départements
+                    </h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                        <input type="text" id="new-dept-name" placeholder="Nouveau département..." style="flex: 1; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
+                        <button id="add-dept-btn" class="btn btn-primary btn-sm" style="padding: 6px 12px;">Ajouter</button>
+                    </div>
+                    <div id="dept-list-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto;">
+                        <!-- Populate dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Right: Functions -->
+                <div style="flex: 1.2; min-width: 300px; padding-left: 10px;">
+                    <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="briefcase" style="color: var(--accent-primary); width:18px; height:18px;"></i>
+                        Fonctions & Postes
+                    </h3>
+                    <div id="func-panel-inactive" style="display: block; color: var(--text-muted); font-size: 0.9rem; padding: 20px 0; text-align: center;">
+                        <i data-lucide="info" style="width: 24px; height: 24px; margin-bottom: 8px; color: var(--text-muted); display: block; margin-inline: auto;"></i>
+                        Sélectionnez un département à gauche pour gérer ses fonctions.
+                    </div>
+                    <div id="func-panel-active" style="display: none;">
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--accent-primary); margin-bottom: 10px;" id="selected-dept-label">Département: -</div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                            <input type="text" id="new-func-name" placeholder="Nouvelle fonction..." style="flex: 1; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
+                            <button id="add-func-btn" class="btn btn-primary btn-sm" style="padding: 6px 12px;">Ajouter</button>
+                        </div>
+                        <div id="func-list-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto;">
+                            <!-- Populate dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                <button type="button" class="btn btn-primary close-modal-btn">Terminer</button>
+            </div>
+        </div>
+    </div>
+    <!-- Modal: Pointage Groupé Personnalisé -->
+    <div id="bulk-custom-pointing-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Pointage Groupé</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0;">
+                <p id="bulk-custom-pointing-count-label" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Saisissez les heures pour les employés sélectionnés.
+                </p>
+                <div class="form-group">
+                    <label for="bulk-pointing-date">Jour du mois en cours <span style="color: var(--accent-danger);">*</span></label>
+                    <input type="number" id="bulk-pointing-date" min="1" max="31" placeholder="Ex: 15" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-primary);">
+                </div>
+                
+                <div class="form-group checkbox-group" style="margin: 15px 0;">
+                    <input type="checkbox" id="bulk-pointing-absence-cb">
+                    <label for="bulk-pointing-absence-cb" style="color: var(--accent-danger);">Marquer comme Absent / Non Travaillé</label>
+                </div>
+
+                <div id="bulk-pointing-hours-container">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="form-group">
+                            <label>Arrivée</label>
+                            <input type="text" id="bulk-pointing-arr" placeholder="ex: 07:30" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Pause</label>
+                            <input type="text" id="bulk-pointing-pau" placeholder="ex: 12:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Reprise</label>
+                            <input type="text" id="bulk-pointing-rep" placeholder="ex: 13:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fin</label>
+                            <input type="text" id="bulk-pointing-fin" placeholder="ex: 17:30" class="time-input">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group" style="margin: 15px 0;">
+                        <input type="checkbox" id="bulk-pointing-night-cb">
+                        <label for="bulk-pointing-night-cb">Appliquer un Shift de Nuit</label>
+                    </div>
+
+                    <div id="bulk-pointing-night-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label>Arrivée Nuit</label>
+                            <input type="text" id="bulk-pointing-narr" placeholder="ex: 21:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Pause Nuit</label>
+                            <input type="text" id="bulk-pointing-npau" placeholder="ex: 01:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Reprise Nuit</label>
+                            <input type="text" id="bulk-pointing-nrep" placeholder="ex: 02:00" class="time-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Fin Nuit</label>
+                            <input type="text" id="bulk-pointing-nfin" placeholder="ex: 05:00" class="time-input">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" id="confirm-bulk-custom-pointing-btn" class="btn btn-primary">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Affectation de fonction groupée -->
+    <div id="bulk-assign-role-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Affecter une fonction groupée</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0;">
+                <p id="bulk-assign-count-label" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+                    Sélectionnez la fonction à affecter aux employés sélectionnés.
+                </p>
+                <div class="form-group">
+                    <label for="bulk-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
+                    <select id="bulk-employee-role-input" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label for="bulk-employee-departement-input">Département résolu</label>
+                    <input type="text" id="bulk-employee-departement-input" readonly disabled placeholder="Déterminé automatiquement..." style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-input); color: var(--text-muted); cursor: not-allowed;">
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 10px;">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" id="confirm-bulk-assign-btn" class="btn btn-primary">Affecter</button>
+            </div>
+        </div>
+    </div>
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
 /**
  * POINTAGE PRO - LOGIQUE DE L'APPLICATION
  * Spécificités : Formatage auto (740 -> 07:40), shifts de nuit (21h - 5h)
@@ -123,107 +1514,96 @@ function getHolidaysForMonth(year, month) {
 let selectedDeptConfig = null;
 
 function populateEmployeeFormSelects(selectedDeptValue = "", selectedFoncValue = "", formType = "add") {
-    let roleInputId = "employee-role-input";
     let deptInputId = "employee-departement-input";
-    let dropdownId  = "add-role-dropdown";
+    let roleSelectId = "employee-role-input";
     if (formType === "edit") {
-        roleInputId = "edit-employee-role-input";
         deptInputId = "edit-employee-departement-input";
-        dropdownId  = "edit-role-dropdown";
+        roleSelectId = "edit-employee-role-input";
     } else if (formType === "bulk") {
-        roleInputId = "bulk-employee-role-input";
         deptInputId = "bulk-employee-departement-input";
-        dropdownId  = "bulk-role-dropdown";
+        roleSelectId = "bulk-employee-role-input";
     }
-
-    const roleInput = document.getElementById(roleInputId);
     const deptInput = document.getElementById(deptInputId);
-    const dropdown  = document.getElementById(dropdownId);
-    if (!roleInput || !dropdown) return;
+    const foncSelect = document.getElementById(roleSelectId);
+    if (!deptInput || !foncSelect) return;
+    
+    // Remplir les fonctions regroupées par département
+    foncSelect.innerHTML = '<option value="">Sélectionnez une fonction...</option>';
 
     if (!state.companyStructure) state.companyStructure = {};
-    const rolesWithDept = [];
-    Object.entries(state.companyStructure).forEach(([dept, foncs]) => {
-        if (Array.isArray(foncs)) foncs.forEach(f => { if (f) rolesWithDept.push({ name: f, dept: dept }); });
+
+    // Collecter toutes les fonctions actuellement configurées
+    const allConfiguredRoles = new Set();
+    Object.values(state.companyStructure).forEach(foncs => {
+        if (Array.isArray(foncs)) {
+            foncs.forEach(f => allConfiguredRoles.add(f));
+        }
     });
-    if (state.employees) {
-        const existingNames = new Set(rolesWithDept.map(r => r.name));
+
+    // Trouver les rôles utilisés par les employés mais non configurés
+    let missingRoles = new Set();
+    if (state.employees && state.employees.length > 0) {
         state.employees.forEach(emp => {
-            if (emp.role && !existingNames.has(emp.role)) {
-                rolesWithDept.push({ name: emp.role, dept: emp.departement || "" });
+            if (emp.role && !allConfiguredRoles.has(emp.role)) {
+                missingRoles.add(emp.role);
             }
         });
     }
-    if (rolesWithDept.length === 0) {
-        rolesWithDept.push({ name: "Employé", dept: "" });
-        rolesWithDept.push({ name: "Manager", dept: "" });
-    }
 
-    const sortedRoles = rolesWithDept.sort((a, b) => a.name.localeCompare(b.name));
-
-    function showDropdown(filter) {
-        const q = (filter || "").trim().toLowerCase();
-        const matches = q ? sortedRoles.filter(r => r.name.toLowerCase().includes(q)) : sortedRoles;
-        if (matches.length === 0) { dropdown.style.display = "none"; return; }
-        dropdown.innerHTML = "";
-        matches.forEach(r => {
-            const item = document.createElement("div");
-            item.className = "ac-item";
-            item.innerHTML = r.name + (r.dept ? '<span class="ac-dept">(' + r.dept + ')</span>' : '');
-            item.addEventListener("mousedown", (e) => {
-                e.preventDefault();
-                roleInput.value = r.name;
-                if (deptInput) {
-                    let fd = "";
-                    Object.entries(state.companyStructure || {}).forEach(([d, fs]) => {
-                        if (Array.isArray(fs) && fs.includes(r.name)) fd = d;
-                    });
-                    deptInput.value = fd || r.dept || "Général";
-                }
-                dropdown.style.display = "none";
-            });
-            dropdown.appendChild(item);
+    // Si on a des rôles manquants, on les ajoute dans un département "Général"
+    if (missingRoles.size > 0) {
+        if (!state.companyStructure["Général"]) state.companyStructure["Général"] = [];
+        missingRoles.forEach(r => {
+            if (!state.companyStructure["Général"].includes(r)) {
+                state.companyStructure["Général"].push(r);
+            }
         });
-        const parentFormGroup = roleInput.closest('.form-group');
-        const groupRect = parentFormGroup ? parentFormGroup.getBoundingClientRect() : { left: 0, top: 0 };
-        const rect = roleInput.getBoundingClientRect();
-        dropdown.style.left = (rect.left - groupRect.left) + "px";
-        dropdown.style.top = (rect.height + 2) + "px";
-        dropdown.style.width = rect.width + "px";
-        dropdown.style.display = "block";
+        if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
     }
 
-    if (roleInput._acBound) {
-        roleInput.removeEventListener("input", roleInput._acBound);
-        roleInput.removeEventListener("focus", roleInput._acFocusBound);
-        roleInput.removeEventListener("blur", roleInput._acBlurBound);
+    // Si la structure est totalement vide (aucun département et aucun employé)
+    if (Object.keys(state.companyStructure).length === 0) {
+        state.companyStructure = { "Général": ["Employé", "Manager"] };
+        if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
     }
 
-    const onInput = () => { showDropdown(roleInput.value); };
-    const onFocus = () => { showDropdown(roleInput.value); };
-    const onBlur  = () => { setTimeout(() => { dropdown.style.display = "none"; }, 150); };
+    const depts = Object.keys(state.companyStructure).sort();
+    
+    const debugOpt = document.createElement("option");
+    debugOpt.disabled = true;
+    debugOpt.textContent = "[DEBUG v3] Depts: " + depts.length + " | " + depts.join(",");
+    foncSelect.appendChild(debugOpt);
+    
+    depts.forEach(dept => {
+        const group = document.createElement("optgroup");
+        group.label = dept;
+        const foncs = Array.isArray(state.companyStructure[dept]) ? [...state.companyStructure[dept]].sort() : [];
+        foncs.forEach(f => {
+            const opt = document.createElement("option");
+            opt.value = f;
+            opt.textContent = f;
+            opt.setAttribute("data-dept", dept);
+            if (f === selectedFoncValue && (dept === selectedDeptValue || !selectedDeptValue)) {
+                opt.selected = true;
+            }
+            group.appendChild(opt);
+        });
+        if (foncs.length > 0) {
+            foncSelect.appendChild(group);
+        }
+    });
 
-    roleInput._acBound = onInput;
-    roleInput._acFocusBound = onFocus;
-    roleInput._acBlurBound = onBlur;
-    roleInput.addEventListener("input", onInput);
-    roleInput.addEventListener("focus", onFocus);
-    roleInput.addEventListener("blur", onBlur);
-
-    if (selectedFoncValue) roleInput.value = selectedFoncValue;
-
-    const updateDept = () => {
-        const val = roleInput.value.trim();
-        if (deptInput) {
-            let foundDept = "";
-            Object.entries(state.companyStructure || {}).forEach(([dept, foncs]) => {
-                if (Array.isArray(foncs) && foncs.includes(val)) foundDept = dept;
-            });
-            deptInput.value = foundDept || (val ? "Général" : "");
+    // Mettre à jour le département selon la fonction sélectionnée
+    const updateDeptFromSelectedFonc = () => {
+        const selectedOpt = foncSelect.options[foncSelect.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+            deptInput.value = selectedOpt.getAttribute("data-dept") || "Non Défini";
+        } else {
+            deptInput.value = "";
         }
     };
-    updateDept();
-    roleInput._deptUpdater = updateDept;
+
+    updateDeptFromSelectedFonc();
 }
 
 function renderStructureConfigModal() {
@@ -493,71 +1873,20 @@ function showLoginLoading(isLoading) {
 let isFirebaseInitialized = false;
 
 function loadStateFromLocalStorage() {
-    // --- 1. SESSION (clé dédiée pour ne pas être écrasée) ---
-    try {
-        const sessionRaw = localStorage.getItem("pps_session");
-        if (sessionRaw) {
-            const session = JSON.parse(sessionRaw);
-            const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
-            const elapsed = Date.now() - (session.loginTime || 0);
-            if (session.currentUser && elapsed < SESSION_TIMEOUT_MS) {
-                state.currentUser = session.currentUser;
-                document.getElementById("login-overlay").style.display = "none";
-            } else {
-                state.currentUser = null;
-                localStorage.removeItem("pps_session");
-            }
-        } else {
-            // Compatibilité ancienne version : lire l'ancien localStorage
-            const old = localStorage.getItem("pointage_pro_state_local");
-            if (old) {
-                const oldParsed = JSON.parse(old);
-                if (oldParsed.currentUser) {
-                    // Migrer la session vers la nouvelle clé et conserver le user
-                    state.currentUser = oldParsed.currentUser;
-                    localStorage.setItem("pps_session", JSON.stringify({
-                        currentUser: oldParsed.currentUser,
-                        loginTime: Date.now()
-                    }));
-                    document.getElementById("login-overlay").style.display = "none";
-                }
-            }
+    // 1. Charger l'état local (préférences de l'utilisateur courant)
+    const localSavedState = localStorage.getItem("pointage_pro_state_local");
+    if (localSavedState) {
+        try {
+            const local = JSON.parse(localSavedState);
+            state.currentUser = local.currentUser || null;
+            state.activeEmployeeId = local.activeEmployeeId || null;
+            state.currentYear = local.currentYear !== undefined ? local.currentYear : new Date().getFullYear();
+            state.currentMonth = local.currentMonth !== undefined ? local.currentMonth : new Date().getMonth();
+        } catch (e) {
+            console.error("Erreur locale", e);
         }
-    } catch(e) { state.currentUser = null; }
-
-    // --- 2. PRÉFÉRENCES (mois, année, employé actif) ---
-    try {
-        const prefsRaw = localStorage.getItem("pps_prefs");
-        if (prefsRaw) {
-            const prefs = JSON.parse(prefsRaw);
-            const yr = parseInt(prefs.currentYear);
-            const mo = parseInt(prefs.currentMonth);
-            state.currentYear  = (!isNaN(yr)) ? yr : new Date().getFullYear();
-            state.currentMonth = (!isNaN(mo)) ? mo : new Date().getMonth();
-            state.activeEmployeeId = prefs.activeEmployeeId || null;
-        } else {
-            // Compatibilité ancienne version
-            const old = localStorage.getItem("pointage_pro_state_local");
-            if (old) {
-                const oldParsed = JSON.parse(old);
-                const oldYr = parseInt(oldParsed.currentYear);
-                const oldMo = parseInt(oldParsed.currentMonth);
-                state.currentYear = (!isNaN(oldYr)) ? oldYr : new Date().getFullYear();
-                state.currentMonth = (!isNaN(oldMo)) ? oldMo : new Date().getMonth();
-                state.activeEmployeeId = oldParsed.activeEmployeeId || null;
-                // Sauvegarder dans la nouvelle clé pour la prochaine fois
-                localStorage.setItem("pps_prefs", JSON.stringify({
-                    currentYear: state.currentYear,
-                    currentMonth: state.currentMonth,
-                    activeEmployeeId: state.activeEmployeeId
-                }));
-            } else {
-                state.currentYear  = new Date().getFullYear();
-                state.currentMonth = new Date().getMonth();
-            }
-        }
-    } catch(e) {
-        state.currentYear  = new Date().getFullYear();
+    } else {
+        state.currentYear = new Date().getFullYear();
         state.currentMonth = new Date().getMonth();
     }
 
@@ -586,7 +1915,7 @@ function loadStateFromLocalStorage() {
             isFirebaseInitialized = true;
             // Ajouter admin de secours si aucun utilisateur
             if (state.users.length === 0) {
-                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
             }
             showLoginLoading(false);
             // Afficher un avertissement discret
@@ -617,7 +1946,7 @@ function loadStateFromLocalStorage() {
             
             // S'assurer qu'il y a toujours un admin si la liste est vide
             if (state.users.length === 0) {
-                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
             }
             
             isFirebaseInitialized = true;
@@ -640,7 +1969,7 @@ function loadStateFromLocalStorage() {
                     state.absenceAlerts = oldState.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
                     
                     if (state.users.length === 0) {
-                        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN" });
+                        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "admin", role: "ADMIN" });
                     }
                     saveStateToLocalStorage();
                 } catch(e) {}
@@ -657,7 +1986,7 @@ function loadStateFromLocalStorage() {
         console.error("Erreur Firebase:", error);
         isFirebaseInitialized = true;
         if (state.users.length === 0) {
-            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "admin", role: "ADMIN" });
         }
         showLoginLoading(false);
         const loadingDiv = document.getElementById("firebase-loading-msg");
@@ -669,34 +1998,54 @@ function loadStateFromLocalStorage() {
     });
 }
 
+function refreshAllViews() {
+    // Ne pas rafraichir le tableau si l'utilisateur est en train de taper
+    if (isTypingInTable) return;
+    
+    // Gérer l'affichage de l'overlay de connexion
+    if (!state.currentUser) {
+        document.getElementById("login-overlay").style.display = "flex";
+    } else {
+        document.getElementById("login-overlay").style.display = "none";
+        setupAuthUI();
+        initializeSelectors();
+        renderEmployeeList();
+        updateActiveEmployeeUI();
+        generateTable();
+        renderPointageFonctionsBar();
+        renderHolidaysList();
+        if (state.activeEmployeeId) {
+            const rattrapageCard = document.getElementById("rattrapage-card");
+            if (rattrapageCard) rattrapageCard.style.display = "block";
+        }
+        
+        // Restaurer l'onglet actif
+        const savedTab = localStorage.getItem("activeTab");
+        if (savedTab) {
+            const btn = document.querySelector(`.tab-btn[data-tab="${savedTab}"]`);
+            if (btn) btn.click();
+        } else {
+            const recapTab = document.getElementById("tab-recap");
+            if (recapTab && recapTab.classList.contains("active") && typeof generateRecapTable === "function") {
+                generateRecapTable();
+            }
+        }
+    }
+    lucide.createIcons();
+}
+
 // Debounce pour Firebase : évite d'envoyer à chaque frappe
 let firebaseSaveTimer = null;
 // Flag pour détecter si l'utilisateur tape dans le tableau de pointage
 let isTypingInTable = false;
 
 function saveStateToLocalStorage() {
-    // 1. Sauvegarder la session dans une clé dédiée
-    if (state.currentUser) {
-        localStorage.setItem("pps_session", JSON.stringify({
-            currentUser: state.currentUser,
-            loginTime: Date.now()
-        }));
-    }
-
-    // 2. Sauvegarder les préférences (mois, année, employé actif)
-    localStorage.setItem("pps_prefs", JSON.stringify({
-        currentYear: state.currentYear,
-        currentMonth: state.currentMonth,
-        activeEmployeeId: state.activeEmployeeId
-    }));
-
-    // 3. Maintenir la compatibilité avec l'ancienne clé (pour les fonctions qui lisent encore l'ancienne clé)
+    // 1. Sauvegarder les données locales (toujours immédiat)
     const localState = {
         currentUser: state.currentUser,
         activeEmployeeId: state.activeEmployeeId,
         currentYear: state.currentYear,
-        currentMonth: state.currentMonth,
-        loginTime: state.currentUser ? Date.now() : 0
+        currentMonth: state.currentMonth
     };
     localStorage.setItem("pointage_pro_state_local", JSON.stringify(localState));
     
@@ -732,7 +2081,7 @@ function createDemoData() {
     state.currentMonth = new Date().getMonth();
     
     if (state.users.length === 0) {
-        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN" });
+        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "admin", role: "ADMIN" });
     }
 
     state.pointages = {
@@ -1009,9 +2358,7 @@ function getRowCalculations(data, detail, periodPaid) {
 function initializeSelectors() {
     // Sélecteur de mois
     const monthSelector = document.getElementById("month-selector");
-    if (monthSelector) {
-        monthSelector.value = String(state.currentMonth);
-    }
+    monthSelector.value = state.currentMonth;
     
     // Sélecteur d'année (5 ans en arrière et 5 ans en avant)
     const yearSelector = document.getElementById("year-selector");
@@ -1056,14 +2403,8 @@ function updateHolidayDaySelector() {
 // CENTRAL REFRESH LOGIC
 // ==========================================================================
 function refreshAllViews() {
-    initializeSelectors();
     renderEmployeeList();
     renderHolidaysList();
-    if (state.currentUser) {
-        document.getElementById("login-overlay").style.display = "none";
-    } else {
-        document.getElementById("login-overlay").style.display = "flex";
-    }
     const activeTab = document.querySelector(".tab-content.active");
     if (activeTab) {
         refreshTabContent(activeTab.id);
@@ -1086,27 +2427,10 @@ function refreshTabContent(targetId) {
     }
 }
 
-function getActiveTabId() {
-    const active = document.querySelector(".tab-btn.active");
-    return active ? active.getAttribute("data-tab") : "tab-pointage";
-}
-
-function printSuiviReport() {
-    const dateInput = document.getElementById("suivi-date-input");
-    if (!dateInput || !dateInput.value) { alert("Veuillez sélectionner une date."); return; }
-    window.print();
-}
-
 function setupEventListeners() {
     // Filtres
     document.getElementById("month-selector").addEventListener("change", (e) => {
         state.currentMonth = parseInt(e.target.value, 10);
-        // Sauvegarder les préférences immédiatement dans la clé dédiée
-        localStorage.setItem("pps_prefs", JSON.stringify({
-            currentYear: state.currentYear,
-            currentMonth: state.currentMonth,
-            activeEmployeeId: state.activeEmployeeId
-        }));
         saveStateToLocalStorage();
         updateHolidayDaySelector();
         
@@ -1119,19 +2443,9 @@ function setupEventListeners() {
     
     document.getElementById("year-selector").addEventListener("change", (e) => {
         state.currentYear = parseInt(e.target.value, 10);
-        // Sauvegarder les préférences immédiatement dans la clé dédiée
-        localStorage.setItem("pps_prefs", JSON.stringify({
-            currentYear: state.currentYear,
-            currentMonth: state.currentMonth,
-            activeEmployeeId: state.activeEmployeeId
-        }));
         saveStateToLocalStorage();
         updateHolidayDaySelector();
         
-        // Mettre à jour l'affichage de l'année en grand
-        const yearDisplay = document.getElementById("current-year-display");
-        if (yearDisplay) yearDisplay.textContent = state.currentYear;
-
         // Synchroniser le filtre local des inactifs avec l'année globale
         const inactYearSel = document.getElementById("inactive-filter-year");
         if (inactYearSel) inactYearSel.value = state.currentYear;
@@ -1335,260 +2649,167 @@ function setupEventListeners() {
         });
     }
 
-    // --- Modal Pointage Groupé ---
-    const bulkCustomPointingModal = document.getElementById("bulk-custom-pointing-modal");
-    const openGroupPointingBtn = document.getElementById("open-group-pointing-btn");
+    // --- NOUVEAU: Modal Pointage Groupé ---
     const bulkCustomPointingBtn = document.getElementById("bulk-custom-pointing-btn");
-    let groupPointingRememberedIds = [];
-    let groupPointingLastFuncFilter = "";
-
-    const BP_TIME_IDS = ["bulk-pointing-arr","bulk-pointing-pau","bulk-pointing-rep","bulk-pointing-fin","bulk-pointing-narr","bulk-pointing-npau","bulk-pointing-nrep","bulk-pointing-nfin"];
-
-    function refreshGroupPointingEmpList(preselectedIds) {
-        const empList = document.getElementById("bulk-pointing-employee-list");
-        const countLabel = document.getElementById("bulk-custom-pointing-count-label");
-        const funcFilter = document.getElementById("bulk-pointing-func-filter");
-        const dayVal = parseInt(document.getElementById("bulk-pointing-date").value);
-        const daysCount = getDaysInMonth(state.currentYear, state.currentMonth);
-        const dateKey = (dayVal >= 1 && dayVal <= daysCount)
-            ? `${state.currentYear}-${String(state.currentMonth + 1).padStart(2,'0')}-${String(dayVal).padStart(2,'0')}`
-            : null;
-
-        const activeEmps = (state.employees || []).filter(e => e.isActive !== false);
-
-        // Populate function filter
-        const funcs = new Set();
-        activeEmps.forEach(e => { if (e.role) funcs.add(e.role); });
-        const prevFunc = funcFilter.value;
-        funcFilter.innerHTML = '<option value="">Toutes</option>';
-        [...funcs].sort().forEach(f => {
-            const o = document.createElement("option");
-            o.value = f; o.textContent = f;
-            funcFilter.appendChild(o);
-        });
-        funcFilter.value = prevFunc || "";
-
-        const selectedFunc = funcFilter.value;
-        const filteredEmps = selectedFunc ? activeEmps.filter(e => e.role === selectedFunc) : activeEmps;
-
-        empList.innerHTML = "";
-        filteredEmps.forEach(emp => {
-            const existing = (dateKey && state.pointages[emp.id] && state.pointages[emp.id][dateKey]) ? state.pointages[emp.id][dateKey] : null;
-            const hasData = existing && (existing.arrivee || existing.pause || existing.reprise || existing.fin || existing.nuitDebut);
-            const isAdmin = state.currentUser && state.currentUser.role === "ADMIN";
-
-            const label = document.createElement("label");
-            label.style.cssText = "display:flex; align-items:center; gap:8px; padding:5px 6px; cursor:pointer; font-size:0.82rem; border-bottom:1px solid var(--border-color);";
-
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.className = "bulk-pointing-emp-cb";
-            cb.value = emp.id;
-            if (hasData) {
-                cb.checked = true;
-                cb.disabled = !isAdmin;
-            } else if (preselectedIds && preselectedIds.includes(emp.id)) {
-                cb.checked = true;
-            }
-            cb.addEventListener("change", () => {
-                countLabel.textContent = document.querySelectorAll(".bulk-pointing-emp-cb:checked").length + " employé(s) sélectionné(s)";
-            });
-
-            const nameSpan = document.createElement("span");
-            nameSpan.textContent = (emp.matricule ? emp.matricule + " — " : "") + emp.name;
-
-            label.appendChild(cb);
-            label.appendChild(nameSpan);
-
-            if (hasData) {
-                const infoSpan = document.createElement("span");
-                const parts = [];
-                if (existing.arrivee) parts.push("A:" + existing.arrivee);
-                if (existing.pause) parts.push("P:" + existing.pause);
-                if (existing.reprise) parts.push("R:" + existing.reprise);
-                if (existing.fin) parts.push("F:" + existing.fin);
-                if (existing.nuitDebut) parts.push("N:" + existing.nuitDebut);
-                infoSpan.style.cssText = "color:var(--accent-day); font-size:0.7rem; margin-left:auto; white-space:nowrap; font-weight:600;";
-                infoSpan.textContent = parts.join(" ");
-                label.appendChild(infoSpan);
-            } else if (emp.role) {
-                const roleSpan = document.createElement("span");
-                roleSpan.style.cssText = "color:var(--text-muted); font-size:0.72rem; margin-left:auto; white-space:nowrap;";
-                roleSpan.textContent = emp.role;
-                label.appendChild(roleSpan);
-            }
-
-            empList.appendChild(label);
-        });
-
-        countLabel.textContent = document.querySelectorAll(".bulk-pointing-emp-cb:checked").length + " employé(s) sélectionné(s)";
-    }
-
-    function openGroupPointingModal(preselectedIds) {
-        if (!bulkCustomPointingModal) return;
-
-        const ids = preselectedIds && preselectedIds.length > 0 ? preselectedIds : groupPointingRememberedIds;
-        groupPointingRememberedIds = ids;
-
-        const today = new Date();
-        let defDate = "";
-        if (today.getFullYear() === state.currentYear && today.getMonth() === state.currentMonth) {
-            defDate = today.getDate();
-        }
-        document.getElementById("bulk-pointing-date").value = defDate;
-        document.getElementById("bulk-pointing-absence-cb").checked = false;
-        document.getElementById("bulk-pointing-night-cb").checked = false;
-        BP_TIME_IDS.forEach(id => { const el = document.getElementById(id); if (el) { el.value = ""; el.readOnly = false; el.style.opacity = "1"; } });
-        document.getElementById("bulk-pointing-hours-container").style.opacity = "1";
-        document.getElementById("bulk-pointing-hours-container").style.pointerEvents = "auto";
-        document.getElementById("bulk-pointing-night-container").style.display = "none";
-
-        refreshGroupPointingEmpList(ids);
-        const funcFilterEl = document.getElementById("bulk-pointing-func-filter");
-        if (funcFilterEl && groupPointingLastFuncFilter) {
-            funcFilterEl.value = groupPointingLastFuncFilter;
-            refreshGroupPointingEmpList(ids);
-        }
-        bulkCustomPointingModal.classList.add("active");
-    }
-
-    if (openGroupPointingBtn) {
-        openGroupPointingBtn.addEventListener("click", () => openGroupPointingModal([]));
-    }
-    if (bulkCustomPointingBtn) {
+    const bulkCustomPointingModal = document.getElementById("bulk-custom-pointing-modal");
+    
+    if (bulkCustomPointingBtn && bulkCustomPointingModal) {
         bulkCustomPointingBtn.addEventListener("click", () => {
-            const ids = Array.from(document.querySelectorAll(".emp-select-cb:checked")).map(cb => cb.value);
-            openGroupPointingModal(ids.length > 0 ? ids : []);
+            const selectedCount = document.querySelectorAll(".emp-select-cb:checked").length;
+            if (selectedCount === 0) return;
+            
+            document.getElementById("bulk-custom-pointing-count-label").textContent = 
+                `Saisissez les horaires pour les ${selectedCount} employé(s) sélectionné(s).`;
+            
+            // Default to today if in current month
+            const today = new Date();
+            let defDate = "";
+            if (today.getFullYear() === state.currentYear && today.getMonth() === state.currentMonth) {
+                defDate = today.getDate();
+            }
+            document.getElementById("bulk-pointing-date").value = defDate;
+            
+            // Reset fields
+            document.getElementById("bulk-pointing-absence-cb").checked = false;
+            document.getElementById("bulk-pointing-night-cb").checked = false;
+            
+            const arr = document.getElementById("bulk-pointing-arr");
+            const pau = document.getElementById("bulk-pointing-pau");
+            const rep = document.getElementById("bulk-pointing-rep");
+            const fin = document.getElementById("bulk-pointing-fin");
+            
+            const narr = document.getElementById("bulk-pointing-narr");
+            const npau = document.getElementById("bulk-pointing-npau");
+            const nrep = document.getElementById("bulk-pointing-nrep");
+            const nfin = document.getElementById("bulk-pointing-nfin");
+            
+            arr.value = ""; pau.value = ""; rep.value = ""; fin.value = "";
+            narr.value = ""; npau.value = ""; nrep.value = ""; nfin.value = "";
+            
+            arr.disabled = false; pau.disabled = false; rep.disabled = false; fin.disabled = false;
+            document.getElementById("bulk-pointing-night-container").style.display = "none";
+            
+            bulkCustomPointingModal.classList.add("active");
         });
-    }
-
-    const selectAllBtn = document.getElementById("bulk-pointing-select-all");
-    const unselectAllBtn = document.getElementById("bulk-pointing-unselect-all");
-    const funcFilterSelect = document.getElementById("bulk-pointing-func-filter");
-    if (selectAllBtn) selectAllBtn.addEventListener("click", () => {
-        document.querySelectorAll(".bulk-pointing-emp-cb:not(:disabled)").forEach(cb => cb.checked = true);
-        document.getElementById("bulk-custom-pointing-count-label").textContent = document.querySelectorAll(".bulk-pointing-emp-cb:checked").length + " employé(s) sélectionné(s)";
-    });
-    if (unselectAllBtn) unselectAllBtn.addEventListener("click", () => {
-        document.querySelectorAll(".bulk-pointing-emp-cb:not(:disabled)").forEach(cb => cb.checked = false);
-        document.getElementById("bulk-custom-pointing-count-label").textContent = "0 employé(s) sélectionné(s)";
-    });
-    if (funcFilterSelect) funcFilterSelect.addEventListener("change", () => {
-        groupPointingLastFuncFilter = funcFilterSelect.value;
-        const checkedIds = Array.from(document.querySelectorAll(".bulk-pointing-emp-cb:checked")).map(cb => cb.value);
-        refreshGroupPointingEmpList(checkedIds);
-    });
-
-    const bulkPointingDateInput = document.getElementById("bulk-pointing-date");
-    if (bulkPointingDateInput) {
-        bulkPointingDateInput.addEventListener("change", () => {
-            const checkedIds = Array.from(document.querySelectorAll(".bulk-pointing-emp-cb:checked")).map(cb => cb.value);
-            refreshGroupPointingEmpList(checkedIds);
+        
+        // Listener absence toggle
+        const absenceCb = document.getElementById("bulk-pointing-absence-cb");
+        absenceCb.addEventListener("change", (e) => {
+            const isAbsent = e.target.checked;
+            const container = document.getElementById("bulk-pointing-hours-container");
+            container.style.opacity = isAbsent ? "0.3" : "1";
+            container.style.pointerEvents = isAbsent ? "none" : "auto";
         });
-    }
-
-    if (bulkCustomPointingModal) {
-        document.getElementById("bulk-pointing-absence-cb").addEventListener("change", (e) => {
-            const c = document.getElementById("bulk-pointing-hours-container");
-            c.style.opacity = e.target.checked ? "0.3" : "1";
-            c.style.pointerEvents = e.target.checked ? "none" : "auto";
-        });
-
-        document.getElementById("bulk-pointing-night-cb").addEventListener("change", (e) => {
+        
+        // Listener night toggle
+        const nightCb = document.getElementById("bulk-pointing-night-cb");
+        nightCb.addEventListener("change", (e) => {
             document.getElementById("bulk-pointing-night-container").style.display = e.target.checked ? "grid" : "none";
         });
-
-        bulkCustomPointingModal.querySelectorAll(".time-input").forEach(input => {
-            input.addEventListener("input", (e) => {
-                let val = e.target.value.replace(/[^0-9]/g, '');
-                if (val.length >= 3) {
-                    const formatted = formatTimeInput(val);
-                    if (formatted !== null) {
-                        e.target.value = formatted;
-                        const visible = BP_TIME_IDS.filter(id => { const el = document.getElementById(id); return el && el.offsetParent !== null && !el.readOnly; });
-                        const idx = visible.indexOf(e.target.id);
-                        if (idx >= 0 && idx < visible.length - 1) {
-                            document.getElementById(visible[idx + 1]).focus();
-                        }
-                    }
-                }
-            });
+        
+        // Auto-format sur les inputs
+        const timeInputs = bulkCustomPointingModal.querySelectorAll(".time-input");
+        timeInputs.forEach(input => {
             input.addEventListener("blur", (e) => {
                 const formatted = formatTimeInput(e.target.value);
-                if (formatted !== null) e.target.value = formatted;
+                if (formatted !== null) {
+                    e.target.value = formatted;
+                }
             });
         });
-
-        document.getElementById("confirm-bulk-custom-pointing-btn").addEventListener("click", () => {
+        
+        // Confirm Button
+        const confirmBtn = document.getElementById("confirm-bulk-custom-pointing-btn");
+        confirmBtn.addEventListener("click", () => {
             const dayVal = parseInt(document.getElementById("bulk-pointing-date").value);
             const daysCount = getDaysInMonth(state.currentYear, state.currentMonth);
+            
             if (isNaN(dayVal) || dayVal < 1 || dayVal > daysCount) {
-                alert("Veuillez entrer un jour valide (1 à " + daysCount + ").");
+                alert("Veuillez entrer un jour valide pour le mois en cours (1 à " + daysCount + ").");
                 return;
             }
-
+            
             const monthStr = String(state.currentMonth + 1).padStart(2, '0');
             const dayStr = String(dayVal).padStart(2, '0');
             const dateKey = `${state.currentYear}-${monthStr}-${dayStr}`;
-
-            const selectedIds = Array.from(document.querySelectorAll(".bulk-pointing-emp-cb:checked")).map(cb => cb.value);
-            if (selectedIds.length === 0) { alert("Veuillez sélectionner au moins un employé."); return; }
-
+            
+            const selectedIds = Array.from(document.querySelectorAll(".emp-select-cb:checked")).map(cb => cb.value);
+            if (selectedIds.length === 0) return;
+            
             const isAbsent = document.getElementById("bulk-pointing-absence-cb").checked;
             const isNight = document.getElementById("bulk-pointing-night-cb").checked;
-
+            
+            // Format time function helper
             const getT = (id) => {
                 let v = document.getElementById(id).value;
                 let fmt = formatTimeInput(v);
                 return fmt !== null ? fmt : v;
             };
-
+            
             const arr = getT("bulk-pointing-arr");
             const pau = getT("bulk-pointing-pau");
             const rep = getT("bulk-pointing-rep");
             const fin = getT("bulk-pointing-fin");
+            
             const narr = getT("bulk-pointing-narr");
             const npau = getT("bulk-pointing-npau");
             const nrep = getT("bulk-pointing-nrep");
             const nfin = getT("bulk-pointing-nfin");
-
+            
+            const isAdmin = state.currentUser && state.currentUser.role === "ADMIN";
+            
             let applyCount = 0;
-
+            
             selectedIds.forEach(empId => {
-                if (!state.pointages[empId]) state.pointages[empId] = {};
-                const existing = state.pointages[empId][dateKey] || {};
-
+                if (!state.pointages[empId]) {
+                    state.pointages[empId] = {};
+                }
+                
+                // Si l'utilisateur n'est pas Admin, on ne peut pas écraser un jour déjà pointé!
+                const existingData = state.pointages[empId][dateKey] || {};
+                const hasExisting = (existingData.arrivee || existingData.pause || existingData.reprise || existingData.fin || existingData.nuitDebut);
+                
+                if (hasExisting && !isAdmin) {
+                    // On skip cet employé car non-admin
+                    return;
+                }
+                
+                applyCount++;
+                
                 if (isAbsent) {
                     state.pointages[empId][dateKey] = {
                         arrivee: "", pause: "", reprise: "", fin: "",
-                        nuitActive: false, nuitDebut: "", nuitPause: "", nuitReprise: "", nuitFin: "",
-                        status: "absent", observation: existing.observation || ""
+                        nuitActive: false,
+                        nuitDebut: "", nuitPause: "", nuitReprise: "", nuitFin: "",
+                        status: "absent",
+                        observation: ""
                     };
                 } else {
                     state.pointages[empId][dateKey] = {
-                        arrivee: arr || existing.arrivee || "",
-                        pause: pau || existing.pause || "",
-                        reprise: rep || existing.reprise || "",
-                        fin: fin || existing.fin || "",
+                        arrivee: arr, pause: pau, reprise: rep, fin: fin,
                         nuitActive: isNight,
-                        nuitDebut: isNight ? (narr || existing.nuitDebut || "") : (existing.nuitDebut || ""),
-                        nuitPause: isNight ? (npau || existing.nuitPause || "") : (existing.nuitPause || ""),
-                        nuitReprise: isNight ? (nrep || existing.nuitReprise || "") : (existing.nuitReprise || ""),
-                        nuitFin: isNight ? (nfin || existing.nuitFin || "") : (existing.nuitFin || ""),
+                        nuitDebut: isNight ? narr : "",
+                        nuitPause: isNight ? npau : "",
+                        nuitReprise: isNight ? nrep : "",
+                        nuitFin: isNight ? nfin : "",
                         status: "present",
-                        observation: existing.observation || ""
+                        observation: existingData.observation || ""
                     };
                 }
-                applyCount++;
             });
-
+            
             saveStateToLocalStorage();
             generateTable();
-            alert(`Pointage appliqué avec succès pour ${applyCount} employé(s).`);
-
-            BP_TIME_IDS.forEach(id => { const el = document.getElementById(id); if (el) { el.value = ""; } });
-            const checkedIds = selectedIds;
-            refreshGroupPointingEmpList(checkedIds);
+            
+            if (applyCount < selectedIds.length) {
+                alert(`${applyCount} employé(s) mis à jour.\n${selectedIds.length - applyCount} employé(s) ignoré(s) car ils avaient déjà un pointage et vous n'êtes pas Administrateur.`);
+            } else {
+                alert(`Pointage appliqué avec succès pour ${applyCount} employé(s).`);
+            }
+            
+            bulkCustomPointingModal.classList.remove("active");
+            document.querySelectorAll(".emp-select-cb:checked").forEach(cb => cb.checked = false);
+            toggleBulkActionBar();
         });
     }
 
@@ -1638,6 +2859,29 @@ function setupEventListeners() {
         });
     }
 
+    // Listeners sur changement de fonction dans les formulaires d'employés (auto-détermination du département)
+    const addFoncSelect = document.getElementById("employee-role-input");
+    if (addFoncSelect) {
+        addFoncSelect.addEventListener("change", () => {
+            const deptInput = document.getElementById("employee-departement-input");
+            const selectedOpt = addFoncSelect.options[addFoncSelect.selectedIndex];
+            if (deptInput) {
+                deptInput.value = selectedOpt && selectedOpt.value ? (selectedOpt.getAttribute("data-dept") || "") : "";
+            }
+        });
+    }
+
+    const editFoncSelect = document.getElementById("edit-employee-role-input");
+    if (editFoncSelect) {
+        editFoncSelect.addEventListener("change", () => {
+            const deptInput = document.getElementById("edit-employee-departement-input");
+            const selectedOpt = editFoncSelect.options[editFoncSelect.selectedIndex];
+            if (deptInput) {
+                deptInput.value = selectedOpt && selectedOpt.value ? (selectedOpt.getAttribute("data-dept") || "") : "";
+            }
+        });
+    }
+
     // Bulk assign function events
     const bulkAssignBtn = document.getElementById("bulk-assign-role-btn");
     const bulkAssignModal = document.getElementById("bulk-assign-role-modal");
@@ -1656,8 +2900,18 @@ function setupEventListeners() {
         });
     }
 
-    const confirmBulkAssignBtn = document.getElementById("confirm-bulk-assign-btn");
     const bulkFoncSelect = document.getElementById("bulk-employee-role-input");
+    if (bulkFoncSelect) {
+        bulkFoncSelect.addEventListener("change", () => {
+            const deptInput = document.getElementById("bulk-employee-departement-input");
+            const selectedOpt = bulkFoncSelect.options[bulkFoncSelect.selectedIndex];
+            if (deptInput) {
+                deptInput.value = selectedOpt && selectedOpt.value ? (selectedOpt.getAttribute("data-dept") || "") : "";
+            }
+        });
+    }
+
+    const confirmBulkAssignBtn = document.getElementById("confirm-bulk-assign-btn");
     if (confirmBulkAssignBtn && bulkAssignModal) {
         confirmBulkAssignBtn.addEventListener("click", () => {
             const selectedRole = bulkFoncSelect.value;
@@ -1812,24 +3066,34 @@ function setupEventListeners() {
         }
     }
 
-    // Unified print button — adapts to active tab
-    document.getElementById("header-print-btn").addEventListener("click", () => {
-        const activeTab = getActiveTabId();
-        if (activeTab === "tab-pointage") {
-            printAll();
-        } else if (activeTab === "tab-recap") {
-            printRecapDashboard();
-        } else if (activeTab === "tab-rapport-presence") {
-            printPresenceReport();
-        } else if (activeTab === "tab-synthese") {
-            exportSynthesisPDF(state.employees.map(e => e.id));
-        } else if (activeTab === "tab-suivi") {
-            window.print();
-        } else if (activeTab === "tab-ajustements") {
-            window.print();
-        } else {
-            window.print();
-        }
+    // Export Excel/CSV
+    document.getElementById("export-single-btn").addEventListener("click", exportToCSV);
+    document.getElementById("export-all-btn").addEventListener("click", exportAllToCSV);
+    
+    // Impression Contextuelle (Pointage ou Synthèse)
+    document.getElementById("print-single-btn").addEventListener("click", () => {
+        const isSynthesisTab = document.querySelector('.tab-btn[data-tab="tab-synthese"]').classList.contains('active');
+        if (isSynthesisTab) exportSynthesisPDF([state.activeEmployeeId]);
+        else window.print();
+    });
+    
+    document.getElementById("print-all-btn").addEventListener("click", () => {
+        const isSynthesisTab = document.querySelector('.tab-btn[data-tab="tab-synthese"]').classList.contains('active');
+        if (isSynthesisTab) exportSynthesisPDF(state.employees.map(e => e.id));
+        else printAll();
+    });
+    
+    // Export PDF Contextuel (Pointage ou Synthèse)
+    document.getElementById("export-pdf-single-btn").addEventListener("click", () => {
+        const isSynthesisTab = document.querySelector('.tab-btn[data-tab="tab-synthese"]').classList.contains('active');
+        if (isSynthesisTab) exportSynthesisPDF([state.activeEmployeeId]);
+        else exportToPDF([state.activeEmployeeId]);
+    });
+    
+    document.getElementById("export-pdf-all-btn").addEventListener("click", () => {
+        const isSynthesisTab = document.querySelector('.tab-btn[data-tab="tab-synthese"]').classList.contains('active');
+        if (isSynthesisTab) exportSynthesisPDF(state.employees.map(e => e.id));
+        else exportToPDF(state.employees.map(e => e.id));
     });
     
     // Initialiser les écouteurs de formulaires
@@ -2375,7 +3639,7 @@ function generateTable() {
             </td>
             
             <!-- Shift Jour -->
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)} ${data.status === 'present' && (!data.arrivee || data.arrivee.trim() === '') ? 'border: 2px solid #ef4444; background-color: #fee2e2;' : ''}"></td>
+            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="pause" value="${data.pause || ''}" placeholder="12:00" ${getFieldDisabled(data.pause)} style="${getFieldStyle(data.pause)}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="reprise" value="${data.reprise || ''}" placeholder="13:00" ${getFieldDisabled(data.reprise)} style="${getFieldStyle(data.reprise)}"></td>
             <td class="day-cell"><input type="text" class="time-input t-jour" data-field="fin" value="${data.fin || ''}" placeholder="17:00" ${getFieldDisabled(data.fin)} style="${getFieldStyle(data.fin)}"></td>
@@ -5098,17 +6362,6 @@ document.getElementById("login-form").addEventListener("submit", (e) => {
     const user = state.users.find(u => u.username === userField && u.password === passField);
     
     if (user) {
-        if (user.password === "" && userField !== "") {
-            const newPass = prompt("Première connexion. Veuillez définir un mot de passe pour votre compte :");
-            if (newPass === null || newPass.trim() === "") {
-                const errorEl = document.getElementById("login-error");
-                errorEl.textContent = "Vous devez définir un mot de passe pour continuer.";
-                errorEl.style.display = "block";
-                return;
-            }
-            user.password = newPass.trim();
-            saveStateToLocalStorage();
-        }
         state.currentUser = user;
         saveStateToLocalStorage();
         document.getElementById("login-overlay").style.display = "none";
@@ -5217,30 +6470,6 @@ if (closeMonthBtn) {
         // On récupère le libellé du mois directement depuis le sélecteur
         const monthSelector = document.getElementById("month-selector");
         const monthLabel = monthSelector.options[monthSelector.selectedIndex].text;
-        
-        // VALIDATION : vérifier si des employés sont présents mais n'ont pas d'heure de pointage
-        let hasIncompletePointage = false;
-        let incompleteDetails = "";
-        
-        state.employees.forEach(emp => {
-            if (!isEmployeeActiveAtDate(emp, state.currentYear, state.currentMonth)) return;
-            const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
-            for (let i = 1; i <= daysInMonth; i++) {
-                const dKey = `${state.currentYear}-${monthStr}-${String(i).padStart(2, '0')}`;
-                const pt = state.pointages[emp.id] ? state.pointages[emp.id][dKey] : null;
-                if (pt && pt.status === "present") {
-                    if (!pt.arrivee || pt.arrivee.trim() === "") {
-                        hasIncompletePointage = true;
-                        incompleteDetails += `- ${emp.name} le ${String(i).padStart(2, '0')}/${monthStr}/${state.currentYear}\n`;
-                    }
-                }
-            }
-        });
-
-        if (hasIncompletePointage) {
-            alert(`Impossible de clôturer ce mois.\n\nCertains employés sont marqués "Présent" dans le Suivi Présence mais n'ont pas d'heures saisies dans l'onglet Pointage :\n\n${incompleteDetails}\nVeuillez d'abord remplir leurs heures de pointage.`);
-            return;
-        }
         
         if (confirm(`Voulez-vous vraiment clôturer le mois de ${monthLabel} ${state.currentYear} ?\n\nUne fois clôturé, les pointages de TOUS les employés pour ce mois ne pourront plus être modifiés.`)) {
             state.closedMonths.push(monthKey);
@@ -5565,31 +6794,6 @@ function renderSuiviJournalier() {
     let pendingCount = 0;
     let doneCount = 0;
 
-    // Render discreet weekday indicator for the current month
-    const weekIndicatorEl = document.getElementById("suivi-weekday-indicator");
-    if (weekIndicatorEl) {
-        const daysInMonth = getDaysInMonth(year, month);
-        const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
-        let indicatorHTML = `<span style="font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-right:6px;">Jours ouvrés :</span>`;
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, month - 1, d);
-            const dayOfWeek = dateObj.getDay();
-            if (dayOfWeek === 0 || dayOfWeek === 6) continue;
-            const dKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            let isPointed = false;
-            sortedEmps.forEach(emp => {
-                if (!isEmployeeActiveAtDate(emp, year, month - 1)) return;
-                if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) return;
-                const pd = (state.pointages[emp.id] && state.pointages[emp.id][dKey]);
-                if (pd && (pd.status === "present" || pd.arrivee)) isPointed = true;
-            });
-            const dayAbbr = ["Di","Lu","Ma","Me","Je","Ve","Sa"][dayOfWeek];
-            const bg = isPointed ? "background:#10b981; color:#fff;" : "background:#ef4444; color:#fff;";
-            indicatorHTML += `<span title="${dayAbbr} ${d} ${monthNames[month-1]}${isPointed ? ' (pointé)' : ' (à pointer)'}" style="display:inline-flex; flex-direction:column; align-items:center; min-width:22px; padding:2px 3px; border-radius:4px; font-size:0.6rem; line-height:1.1; cursor:default; ${bg}"><span style="font-weight:700;">${d}</span><span style="font-size:0.55rem; opacity:0.85;">${dayAbbr}</span></span>`;
-        }
-        weekIndicatorEl.innerHTML = indicatorHTML;
-    }
-
     sortedEmps.forEach(emp => {
         // Ignorer les inactifs
         if (!isEmployeeActiveAtDate(emp, year, month - 1)) return; 
@@ -5597,14 +6801,6 @@ function renderSuiviJournalier() {
         // Filtrer par département sélectionné
         if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) {
             return;
-        }
-
-        const searchInput = document.getElementById("suivi-search-input");
-        const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        if (searchVal) {
-            const name = (emp.name || "").toLowerCase();
-            const mat = (emp.matricule || "").toLowerCase();
-            if (!name.includes(searchVal) && !mat.includes(searchVal)) return;
         }
         
         const pointageData = (state.pointages[emp.id] && state.pointages[emp.id][dateKey]) || {};
@@ -5632,9 +6828,10 @@ function renderSuiviJournalier() {
 
         if (isPending) {
             pendingCount++;
-
-            const motifVal = dayDetail.note || "";
-            const obsVal = dayDetail.observation || "";
+            
+            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
+                placeholder="Non justifié" value="${motif}" 
+                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)">`;
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -5644,12 +6841,11 @@ function renderSuiviJournalier() {
                     ${emp.name}
                     <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
                 </td>
-                <td><span class="dept-badge">${emp.departement || 'N/A'}</span></td>
+                <td><span class="dept-badge">${emp.departement}</span></td>
                 <td><span class="status-badge" style="background:#94a3b8; color:#fff;">Non Pointé</span></td>
-                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Motif absence..." value="${motifVal}" onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"></td>
-                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Observation..." value="${obsVal}" onchange="saveSuiviObservation('${emp.id}', '${dateKey}', this.value)"></td>
+                <td>${motifInput}</td>
                 <td>
-                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 5px; justify-content: center;">
                         <button class="btn btn-sm btn-success" onclick="setSuiviPresence('${emp.id}', '${dateKey}', 'present')" style="padding: 4px 8px;">
                             <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Présent
                         </button>
@@ -5662,9 +6858,11 @@ function renderSuiviJournalier() {
             tbody.appendChild(tr);
         } else {
             doneCount++;
-
-            const motifVal = dayDetail.note || "";
-            const obsVal = dayDetail.observation || "";
+            
+            let motifInput = `<input type="text" class="modern-input" style="width: 200px; padding: 4px 8px;" 
+                placeholder="Non justifié" value="${motif}" 
+                onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"
+                ${isPresent ? 'disabled opacity="0.5"' : ''}>`;
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -5673,12 +6871,11 @@ function renderSuiviJournalier() {
                     ${emp.name}
                     <br><span style="font-size: 0.8em; color: var(--text-muted);">Début: ${startDateFormatted}</span>
                 </td>
-                <td><span class="dept-badge">${emp.departement || 'N/A'}</span></td>
+                <td><span class="dept-badge">${emp.departement}</span></td>
                 <td id="suivi-status-${emp.id}">${statusBadge}</td>
-                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Motif absence..." value="${motifVal}" onchange="saveSuiviMotif('${emp.id}', '${dateKey}', this.value)"></td>
-                <td><input type="text" class="modern-input" style="width:160px; padding:4px 8px;" placeholder="Observation..." value="${obsVal}" onchange="saveSuiviObservation('${emp.id}', '${dateKey}', this.value)"></td>
+                <td>${motifInput}</td>
                 <td>
-                    <div style="display: flex; gap: 5px; justify-content: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 5px; justify-content: center;">
                         <label style="cursor: pointer; padding: 4px 10px; border-radius: 4px; border: 1px solid #10b981; background: ${isPresent ? '#10b981' : 'transparent'}; color: ${isPresent ? '#fff' : '#10b981'}; display: flex; align-items: center; gap: 5px; transition: all 0.2s;">
                             <input type="radio" name="status-done-${emp.id}" style="display: none;" onchange="setSuiviPresence('${emp.id}', '${dateKey}', 'present')" ${isPresent ? 'checked' : ''}>
                             <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i> Présent
@@ -5687,9 +6884,6 @@ function renderSuiviJournalier() {
                             <input type="radio" name="status-done-${emp.id}" style="display: none;" onchange="setSuiviPresence('${emp.id}', '${dateKey}', 'absent')" ${!isPresent ? 'checked' : ''}>
                             <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Absent
                         </label>
-                        <button class="btn btn-sm" onclick="clearSuiviPresenceEmploye('${emp.id}', '${dateKey}')" title="Effacer ce pointage" style="padding: 4px 8px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c;">
-                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-                        </button>
                     </div>
                 </td>
             `;
@@ -5710,20 +6904,6 @@ function toggleSuiviSelectAll(cb) {
     });
 }
 
-// Effacer le pointage d'un seul employé pour un jour donné
-window.clearSuiviPresenceEmploye = function(empId, dateKey) {
-    if (state.pointages[empId] && state.pointages[empId][dateKey]) {
-        delete state.pointages[empId][dateKey];
-    }
-    if (state.dayDetails[empId] && state.dayDetails[empId][dateKey]) {
-        delete state.dayDetails[empId][dateKey];
-    }
-    saveStateToLocalStorage();
-    renderSuiviJournalier();
-    const reportTable = document.getElementById("suivi-report-table");
-    if (reportTable && reportTable.style.display !== "none") generatePresenceReport();
-};
-
 function markBulkPresence(isPresent) {
     const dateKey = document.getElementById("suivi-date-input").value;
     if (!dateKey) return;
@@ -5742,6 +6922,10 @@ function markBulkPresence(isPresent) {
         
         if (isPresent) {
             state.pointages[empId][dateKey].status = "present";
+            // On le met en MP par défaut, il pourra être modifié dans l'onglet Pointage
+            if (!state.pointages[empId][dateKey].arrivee) {
+                state.pointages[empId][dateKey].arrivee = "MP"; 
+            }
         } else {
             state.pointages[empId][dateKey].status = "absent";
             state.pointages[empId][dateKey].arrivee = "";
@@ -5771,6 +6955,9 @@ function setSuiviPresence(empId, dateKey, status) {
     
     if (status === "present") {
         state.pointages[empId][dateKey].status = "present";
+        if (!state.pointages[empId][dateKey].arrivee) {
+            state.pointages[empId][dateKey].arrivee = "MP"; 
+        }
     } else {
         state.pointages[empId][dateKey].status = "absent";
         state.pointages[empId][dateKey].arrivee = "";
@@ -5793,17 +6980,15 @@ function setSuiviPresence(empId, dateKey, status) {
 function saveSuiviMotif(empId, dateKey, value) {
     if (!state.dayDetails[empId]) state.dayDetails[empId] = {};
     if (!state.dayDetails[empId][dateKey]) state.dayDetails[empId][dateKey] = {};
+    
     state.dayDetails[empId][dateKey].note = value.trim();
     saveStateToLocalStorage();
+    
+    // Auto-actualiser le rapport s'il est déjà généré/affiché
     const reportTable = document.getElementById("suivi-report-table");
-    if (reportTable && reportTable.style.display !== "none") generatePresenceReport();
-}
-
-function saveSuiviObservation(empId, dateKey, value) {
-    if (!state.dayDetails[empId]) state.dayDetails[empId] = {};
-    if (!state.dayDetails[empId][dateKey]) state.dayDetails[empId][dateKey] = {};
-    state.dayDetails[empId][dateKey].observation = value.trim();
-    saveStateToLocalStorage();
+    if (reportTable && reportTable.style.display !== "none") {
+        generatePresenceReport();
+    }
 }
 
 function generatePresenceReport() {
@@ -5872,14 +7057,13 @@ function generatePresenceReport() {
             const holidays = getHolidays(year);
             const isHoliday = !!holidays[dateKey];
             const isSunday = (dayOfWeek === 0);
-            const isSaturday = (dayOfWeek === 6);
             
             const pointageData = (state.pointages[emp.id] && state.pointages[emp.id][dateKey]) || {};
             const status = pointageData.status || "absent";
             
-            // Jours attendus : ni week-end ni férié
+            // Jours attendus : ni dimanche ni férié
             let expected = false;
-            if (!isSunday && !isSaturday && !isHoliday) {
+            if (!isSunday && !isHoliday) {
                 expected = true;
                 daysExpected++;
             }
@@ -6312,43 +7496,8 @@ function renderInactiveEmployeesTab() {
     updateInactiveCountBadge();
 }
 
-// Fonction pour effacer tout le pointage Suivi Présence d'un jour
-window.clearSuiviPresenceCeJour = function() {
-    const dateInput = document.getElementById("suivi-date-input");
-    if (!dateInput || !dateInput.value) return;
-    const dateVal = dateInput.value;
-    
-    // Reformater la date pour un affichage lisible
-    const dateParts = dateVal.split('-');
-    const dateAffichage = (dateParts.length === 3) ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : dateVal;
-    
-    if (!confirm(`Voulez-vous vraiment effacer TOUT le pointage du suivi présence pour le ${dateAffichage} ?\n\nAttention: Cela supprimera tous les statuts (Présent/Absent) et les observations de cette journée.`)) {
-        return;
-    }
 
-    let updated = 0;
-    state.employees.forEach(emp => {
-        if (state.pointages[emp.id] && state.pointages[emp.id][dateVal]) {
-            delete state.pointages[emp.id][dateVal];
-            updated++;
-        }
-        if (state.dayDetails[emp.id] && state.dayDetails[emp.id][dateVal]) {
-            delete state.dayDetails[emp.id][dateVal];
-            updated++;
-        }
-    });
 
-    if (updated > 0) {
-        saveStateToLocalStorage();
-        renderSuiviJournalier();
-        alert("Le pointage de suivi présence du " + dateAffichage + " a été effacé avec succès.");
-        
-        // Auto-actualiser le rapport s'il est affiché
-        const reportTable = document.getElementById("suivi-report-table");
-        if (reportTable && reportTable.style.display !== "none") {
-            generatePresenceReport();
-        }
-    } else {
-        alert("Aucun pointage trouvé pour le " + dateAffichage + ".");
-    }
-};
+</script>
+</body>
+</html>

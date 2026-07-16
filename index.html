@@ -11,8 +11,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Lucide Icons    </div>
-
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- App Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
     <!-- Modal Gestion Utilisateurs -->
     <div class="modal" id="users-modal">
         <div class="modal-content" style="max-width: 600px;">
@@ -65,11 +69,6 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- App Styles -->
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
     <!-- Login Overlay -->
     <div id="login-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-card); z-index:9999; display:flex; align-items:center; justify-content:center; flex-direction:column;">
         <div style="background:#fff; padding:32px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); width:100%; max-width:400px; text-align:center;">
@@ -180,7 +179,6 @@
                     <!-- Month & Year Selectors -->
                       <div class="selector-group">
                           <div class="custom-select-wrapper">
-                              <span id="current-year-display" style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary); margin-right: 10px;"></span>
                               <select id="month-selector" class="custom-select">
                                 <option value="0">Janvier</option>
                                 <option value="1">Février</option>
@@ -207,8 +205,14 @@
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px;">
+                        <button id="open-group-pointing-btn" class="btn btn-primary btn-sm" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+                            <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Pointage Groupé
+                        </button>
+                        <button id="header-print-btn" class="btn btn-secondary btn-sm" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
+                            <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
+                        </button>
                         <button id="close-month-btn" class="btn btn-danger" style="display:none; padding:8px 12px; font-size:0.85rem; font-weight:600;">
-                            <i data-lucide="lock" style="width:16px; height:16px;"></i> Clôturer ce mois
+                            <i data-lucide="lock" style="width:16px;height:16px;"></i> Clôturer ce mois
                         </button>
                         <span id="closed-month-badge" style="display:none; background:#fee2e2; color:#b91c1c; padding:6px 12px; border-radius:6px; font-size:0.85rem; font-weight:700; border:1px solid #fca5a5;">
                             <i data-lucide="lock" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Mois Clôturé
@@ -282,53 +286,7 @@
                     <!-- Rempli dynamiquement par JS -->
                 </div>
                 
-                <!-- Actions Export/Print Pointage -->
-                <div class="action-buttons" style="margin-left:auto;">
-                    <div class="dropdown">
-                        <button class="btn btn-secondary">
-                            <i data-lucide="download"></i>
-                            <span>Exporter Pointage</span>
-                            <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: 4px;"></i>
-                        </button>
-                        <div class="dropdown-content" style="right:0;">
-                            <button id="export-single-btn" class="dropdown-item" type="button">
-                                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
-                                <span>Employé actuel (Excel)</span>
-                            </button>
-                            <button id="export-all-btn" class="dropdown-item" type="button">
-                                <i data-lucide="users" style="width: 16px; height: 16px;"></i>
-                                <span>Tous les employés (Excel)</span>
-                            </button>
-                            <div class="dropdown-divider"></div>
-                            <button id="export-pdf-single-btn" class="dropdown-item" type="button">
-                                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
-                                <span>Employé actuel (PDF)</span>
-                            </button>
-                            <button id="export-pdf-all-btn" class="dropdown-item" type="button">
-                                <i data-lucide="files" style="width: 16px; height: 16px;"></i>
-                                <span>Tous les employés (PDF)</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="dropdown">
-                        <button class="btn btn-primary">
-                            <i data-lucide="printer"></i>
-                            <span>Imprimer Pointage</span>
-                            <i data-lucide="chevron-down" style="width: 14px; height: 14px; margin-left: 4px;"></i>
-                        </button>
-                        <div class="dropdown-content" style="right:0;">
-                            <button id="print-single-btn" class="dropdown-item" type="button">
-                                <i data-lucide="user" style="width: 16px; height: 16px;"></i>
-                                <span>Employé actuel</span>
-                            </button>
-                            <button id="print-all-btn" class="dropdown-item" type="button">
-                                <i data-lucide="users" style="width: 16px; height: 16px;"></i>
-                                <span>Tous les employés (Lot)</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <!-- Actions Export/Print Pointage removed — now in header -->
             </div>
 
 
@@ -476,6 +434,7 @@
                 <div class="section-title" style="margin-top: 10px; font-size: 1.2rem; display: flex; align-items: center; gap: 10px;">
                     <i data-lucide="check-square"></i> Pointage Journalier Rapide
                 </div>
+                <div id="suivi-weekday-indicator" style="display:flex; flex-wrap:wrap; gap:3px; align-items:center; margin-top:10px; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-sm);"></div>
 
                 <!-- Filtre par Département -->
                 <div style="margin-top: 10px; margin-bottom: 15px;">
@@ -1030,8 +989,8 @@
                 </div>
                 <div class="form-group">
                     <label for="employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="employee-role-input" list="add-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
-                    <datalist id="add-role-datalist"></datalist>
+                    <input type="text" id="employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
+                    <div id="add-role-dropdown" class="autocomplete-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label for="employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1084,8 +1043,8 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="edit-employee-role-input" list="edit-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
-                    <datalist id="edit-role-datalist"></datalist>
+                    <input type="text" id="edit-employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
+                    <div id="edit-role-dropdown" class="autocomplete-dropdown"></div>
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1295,66 +1254,80 @@
     </div>
     <!-- Modal: Pointage Groupé Personnalisé -->
     <div id="bulk-custom-pointing-modal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 550px;">
             <div class="modal-header">
                 <h2>Pointage Groupé</h2>
                 <button class="close-modal-btn">&times;</button>
             </div>
-            <div class="modal-body" style="padding: 20px 0;">
-                <p id="bulk-custom-pointing-count-label" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
-                    Saisissez les heures pour les employés sélectionnés.
-                </p>
+            <div class="modal-body" style="padding: 20px 0; max-height: 75vh; overflow-y: auto;">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Sélectionner les travailleurs <span style="color: var(--accent-danger);">*</span></label>
+                    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
+                        <button type="button" id="bulk-pointing-select-all" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">Tout cocher</button>
+                        <button type="button" id="bulk-pointing-unselect-all" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">Tout décocher</button>
+                        <span style="color:var(--border-color); margin: 0 2px;">|</span>
+                        <label style="font-size:0.72rem; color:var(--text-muted); margin:0;">Fonction :</label>
+                        <select id="bulk-pointing-func-filter" style="font-size:0.72rem; padding:3px 6px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-primary); max-width:160px;">
+                            <option value="">Toutes</option>
+                        </select>
+                    </div>
+                    <div id="bulk-pointing-employee-list" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 6px;">
+                        <!-- Dynamiquement rempli -->
+                    </div>
+                    <p id="bulk-custom-pointing-count-label" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">0 employé(s) sélectionné(s)</p>
+                </div>
+
                 <div class="form-group">
                     <label for="bulk-pointing-date">Jour du mois en cours <span style="color: var(--accent-danger);">*</span></label>
                     <input type="number" id="bulk-pointing-date" min="1" max="31" placeholder="Ex: 15" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-primary);">
                 </div>
                 
-                <div class="form-group checkbox-group" style="margin: 15px 0;">
+                <div class="form-group checkbox-group" style="margin: 12px 0;">
                     <input type="checkbox" id="bulk-pointing-absence-cb">
                     <label for="bulk-pointing-absence-cb" style="color: var(--accent-danger);">Marquer comme Absent / Non Travaillé</label>
                 </div>
 
                 <div id="bulk-pointing-hours-container">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                         <div class="form-group">
                             <label>Arrivée</label>
-                            <input type="text" id="bulk-pointing-arr" placeholder="ex: 07:30" class="time-input">
+                            <input type="text" id="bulk-pointing-arr" placeholder="ex: 07:30" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Pause</label>
-                            <input type="text" id="bulk-pointing-pau" placeholder="ex: 12:00" class="time-input">
+                            <input type="text" id="bulk-pointing-pau" placeholder="ex: 12:00" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Reprise</label>
-                            <input type="text" id="bulk-pointing-rep" placeholder="ex: 13:00" class="time-input">
+                            <input type="text" id="bulk-pointing-rep" placeholder="ex: 13:00" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Fin</label>
-                            <input type="text" id="bulk-pointing-fin" placeholder="ex: 17:30" class="time-input">
+                            <input type="text" id="bulk-pointing-fin" placeholder="ex: 17:30" class="time-input bp-next">
                         </div>
                     </div>
                     
-                    <div class="form-group checkbox-group" style="margin: 15px 0;">
+                    <div class="form-group checkbox-group" style="margin: 12px 0;">
                         <input type="checkbox" id="bulk-pointing-night-cb">
                         <label for="bulk-pointing-night-cb">Appliquer un Shift de Nuit</label>
                     </div>
 
-                    <div id="bulk-pointing-night-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div id="bulk-pointing-night-container" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group">
                             <label>Arrivée Nuit</label>
-                            <input type="text" id="bulk-pointing-narr" placeholder="ex: 21:00" class="time-input">
+                            <input type="text" id="bulk-pointing-narr" placeholder="ex: 21:00" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Pause Nuit</label>
-                            <input type="text" id="bulk-pointing-npau" placeholder="ex: 01:00" class="time-input">
+                            <input type="text" id="bulk-pointing-npau" placeholder="ex: 01:00" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Reprise Nuit</label>
-                            <input type="text" id="bulk-pointing-nrep" placeholder="ex: 02:00" class="time-input">
+                            <input type="text" id="bulk-pointing-nrep" placeholder="ex: 02:00" class="time-input bp-next">
                         </div>
                         <div class="form-group">
                             <label>Fin Nuit</label>
-                            <input type="text" id="bulk-pointing-nfin" placeholder="ex: 05:00" class="time-input">
+                            <input type="text" id="bulk-pointing-nfin" placeholder="ex: 05:00" class="time-input bp-next">
                         </div>
                     </div>
                 </div>
@@ -1379,8 +1352,8 @@
                 </p>
                 <div class="form-group">
                     <label for="bulk-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="bulk-employee-role-input" list="bulk-role-datalist" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);" autocomplete="off">
-                    <datalist id="bulk-role-datalist"></datalist>
+                    <input type="text" id="bulk-employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
+                    <div id="bulk-role-dropdown" class="autocomplete-dropdown"></div>
                 </div>
                 <div class="form-group" style="margin-top: 12px;">
                     <label for="bulk-employee-departement-input">Département résolu</label>
