@@ -656,7 +656,9 @@ function loadStateFromLocalStorage() {
             
             isFirebaseInitialized = true;
             showLoginLoading(false);
-            refreshAllViews();
+            if (!isTypingInTable) {
+                refreshAllViews();
+            }
         } else {
             // Firebase est vide, on migre l'ancien LocalStorage si présent
             if (oldSavedState) {
@@ -1535,7 +1537,7 @@ function setupEventListeners() {
         bulkCustomPointingModal.querySelectorAll(".time-input").forEach(input => {
             input.addEventListener("input", (e) => {
                 let val = e.target.value.replace(/[^0-9]/g, '');
-                if (val.length >= 3) {
+                if (val.length >= 4) {
                     const formatted = formatTimeInput(val);
                     if (formatted !== null) {
                         e.target.value = formatted;
@@ -3307,12 +3309,12 @@ function attachTableInputEvents() {
             if (rawVal === "") {
                 this.classList.remove("invalid-input");
                 saveInputValue(this);
-                // Libérer le flag seulement si aucun autre champ du tableau n'est focalisé
                 setTimeout(() => {
                     if (!document.activeElement || !document.activeElement.classList.contains("time-input")) {
                         isTypingInTable = false;
+                        refreshAllViews();
                     }
-                }, 50);
+                }, 100);
                 return;
             }
             
@@ -3325,12 +3327,12 @@ function attachTableInputEvents() {
             }
             
             saveInputValue(this);
-            // Libérer le flag seulement si aucun autre champ du tableau n'est focalisé
             setTimeout(() => {
                 if (!document.activeElement || !document.activeElement.classList.contains("time-input")) {
                     isTypingInTable = false;
+                    refreshAllViews();
                 }
-            }, 50);
+            }, 100);
         });
 
         input.addEventListener("input", function() {
