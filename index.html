@@ -19,52 +19,128 @@
 <body>
     <!-- Modal Gestion Utilisateurs -->
     <div class="modal" id="users-modal">
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 780px;">
             <div class="modal-header">
-                <h2>Gestion des Utilisateurs</h2>
+                <h2 style="display:flex; align-items:center; gap:8px;"><i data-lucide="users" style="width:22px;height:22px;"></i> Gestion des Utilisateurs</h2>
                 <button class="close-modal-btn"><i data-lucide="x"></i></button>
             </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <div style="margin-bottom: 20px;">
-                    <h3>Ajouter un utilisateur</h3>
-                    <form id="add-user-form" style="display: flex; gap: 10px; align-items: flex-end; margin-top: 10px;">
-                        <div style="flex: 1;">
-                            <label style="font-size:0.8rem;">Identifiant</label>
-                            <input type="text" id="new-user-username" required style="width: 100%; padding: 8px;">
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto; padding: 20px;">
+
+                <!-- FORMULAIRE AJOUTER / MODIFIER -->
+                <div style="background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--border-radius-md); padding: 18px; margin-bottom: 24px;">
+                    <h3 id="user-form-title" style="font-size: 1rem; font-weight: 700; margin: 0 0 14px 0; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="user-plus" style="width:18px;height:18px;"></i> Ajouter un utilisateur
+                    </h3>
+                    <form id="add-user-form">
+                        <input type="hidden" id="edit-user-id" value="">
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;">
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Identifiant</label>
+                                <input type="text" id="new-user-username" required placeholder="Ex: john.doe" style="width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Mot de passe</label>
+                                <input type="password" id="new-user-password" placeholder="Mot de passe" style="width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div style="flex: 1; min-width: 150px;">
+                                <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Rôle</label>
+                                <select id="new-user-role" style="width: 100%; padding: 8px 10px; font-size: 0.85rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary);">
+                                    <option value="USER">Utilisateur</option>
+                                    <option value="ADMIN">Administrateur</option>
+                                </select>
+                            </div>
                         </div>
-                        <div style="flex: 1;">
-                            <label style="font-size:0.8rem;">Mot de passe</label>
-                            <input type="text" id="new-user-password" required style="width: 100%; padding: 8px;">
+                        <!-- Permissions d'accès (onglets) -->
+                        <div id="user-permissions-section">
+                            <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted); display:block; margin-bottom:8px;">
+                                <i data-lucide="shield" style="width:13px;height:13px;vertical-align:-2px;"></i> Accès aux onglets
+                                <span style="font-weight:400; font-size:0.7rem; color:var(--text-muted);">(Voir = consultation seule, Modifier = peut saisir/éditer)</span>
+                            </label>
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+                                    <thead>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <th style="text-align:left; padding:4px 8px; font-weight:600; color:var(--text-muted);">Onglet</th>
+                                            <th style="text-align:center; padding:4px 10px; font-weight:600; color:var(--text-muted);">Voir</th>
+                                            <th style="text-align:center; padding:4px 10px; font-weight:600; color:var(--text-muted);">Modifier</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="user-permissions-tbody">
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Pointage</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-pointage"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-pointage"></td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Suivi Présence</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-suivi"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-suivi"></td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Rapport Présence</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-rapport-presence"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-rapport-presence"></td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Synthèse</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-synthese"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-synthese"></td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Ajustements</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-ajustements"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-ajustements"></td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:4px 8px; font-weight:500;">Tableau de Bord</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-recap"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-recap"></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:4px 8px; font-weight:500;">Employés & Paramètres</td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-view-cb" value="tab-parametres"></td>
+                                            <td style="text-align:center;"><input type="checkbox" class="perm-edit-cb" value="tab-parametres"></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                        <div style="flex: 1;">
-                            <label style="font-size:0.8rem;">Rôle</label>
-                            <select id="new-user-role" style="width: 100%; padding: 8px;">
-                                <option value="USER">Utilisateur</option>
-                                <option value="ADMIN">Administrateur</option>
-                            </select>
+                        <div style="display:flex; gap:8px; margin-top:14px;">
+                            <button type="submit" id="user-form-submit-btn" class="btn btn-primary" style="padding: 8px 18px; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+                                <i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter
+                            </button>
+                            <button type="button" id="user-form-cancel-btn" class="btn btn-secondary" style="padding: 8px 18px; font-size:0.85rem; display:none; align-items:center; gap:6px;">
+                                <i data-lucide="x" style="width:14px;height:14px;"></i> Annuler
+                            </button>
                         </div>
-                        <button type="submit" class="btn btn-primary" style="padding: 8px 12px;"><i data-lucide="plus"></i></button>
                     </form>
                 </div>
                 
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Identifiant</th>
-                                <th>Mot de passe</th>
-                                <th>Rôle</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-tbody">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
+                <!-- TABLEAU DES UTILISATEURS -->
+                <div>
+                    <h3 style="font-size: 1rem; font-weight: 700; margin: 0 0 12px 0; display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="list" style="width:16px;height:16px;"></i> Utilisateurs enregistrés
+                    </h3>
+                    <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-md);">
+                        <table class="data-table" style="width:100%; font-size:0.85rem;">
+                            <thead>
+                                <tr style="background:var(--bg-input);">
+                                    <th style="padding:10px 12px; text-align:left; font-weight:600; font-size:0.8rem;">Identifiant</th>
+                                    <th style="padding:10px 12px; text-align:left; font-weight:600; font-size:0.8rem;">Mot de passe</th>
+                                    <th style="padding:10px 12px; text-align:center; font-weight:600; font-size:0.8rem;">Rôle</th>
+                                    <th style="padding:10px 12px; text-align:left; font-weight:600; font-size:0.8rem;">Accès onglets</th>
+                                    <th style="padding:10px 12px; text-align:center; font-weight:600; font-size:0.8rem;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary close-modal-btn">Fermer</button>
+                <button type="button" class="btn btn-secondary close-modal-btn" style="padding: 8px 20px;">Fermer</button>
             </div>
         </div>
     </div>

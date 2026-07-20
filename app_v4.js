@@ -421,6 +421,12 @@ function setupAuthUI() {
 
         const backupSection = document.getElementById("backup-section");
         if (backupSection) backupSection.style.display = "block";
+
+        const clearMonthBtn = document.getElementById("clear-month-btn");
+        if (clearMonthBtn) clearMonthBtn.style.display = "";
+
+        const effacerJourBtn = document.querySelector('[onclick="clearSuiviPresenceCeJour()"]');
+        if (effacerJourBtn) effacerJourBtn.style.display = "";
     } else {
         const manageBtn = document.getElementById("manage-users-btn");
         if (manageBtn) manageBtn.style.display = "none";
@@ -430,7 +436,15 @@ function setupAuthUI() {
 
         const backupSection = document.getElementById("backup-section");
         if (backupSection) backupSection.style.display = "none";
+
+        const clearMonthBtn = document.getElementById("clear-month-btn");
+        if (clearMonthBtn) clearMonthBtn.style.display = "none";
+
+        const effacerJourBtn = document.querySelector('[onclick="clearSuiviPresenceCeJour()"]');
+        if (effacerJourBtn) effacerJourBtn.style.display = "none";
     }
+    
+    applyTabPermissions();
 }
 
 // Initialisation de l'application
@@ -462,7 +476,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Erreur loadStateFromLocalStorage:", err);
         showLoginLoading(false);
         if (state.users.length === 0) {
-            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN", permissions: [] });
             saveStateToLocalStorage();
         }
         clearTimeout(loginFailsafe);
@@ -575,6 +589,14 @@ function loadStateFromLocalStorage() {
     if (!state.absencePeriods) state.absencePeriods = {};
     if (!state.companyStructure) state.companyStructure = {};
     if (!state.users) state.users = [];
+    state.users.forEach(u => {
+        if (!u.permissions) u.permissions = {};
+        if (Array.isArray(u.permissions)) {
+            const converted = {};
+            u.permissions.forEach(tabId => { converted[tabId] = "view"; });
+            u.permissions = converted;
+        }
+    });
     if (!state.closedMonths) state.closedMonths = [];
     if (!state.employees) state.employees = [];
     if (!state.pointages) state.pointages = {};
@@ -588,7 +610,7 @@ function loadStateFromLocalStorage() {
         console.warn("Firebase non disponible - mode local");
         isFirebaseInitialized = true;
         if (state.users.length === 0) {
-            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN", permissions: [] });
         }
         showLoginLoading(false);
         refreshAllViews();
@@ -603,7 +625,7 @@ function loadStateFromLocalStorage() {
             isFirebaseInitialized = true;
             // Ajouter admin de secours si aucun utilisateur
             if (state.users.length === 0) {
-                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN", permissions: [] });
             }
             showLoginLoading(false);
             // Afficher un avertissement discret
@@ -634,7 +656,7 @@ function loadStateFromLocalStorage() {
             
             // S'assurer qu'il y a toujours un admin si la liste est vide
             if (state.users.length === 0) {
-                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+                state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN", permissions: [] });
             }
             
             isFirebaseInitialized = true;
@@ -659,7 +681,7 @@ function loadStateFromLocalStorage() {
                     state.absenceAlerts = oldState.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
                     
                     if (state.users.length === 0) {
-                        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN" });
+                        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN", permissions: [] });
                     }
                     saveStateToLocalStorage();
                 } catch(e) {}
@@ -676,7 +698,7 @@ function loadStateFromLocalStorage() {
         console.error("Erreur Firebase:", error);
         isFirebaseInitialized = true;
         if (state.users.length === 0) {
-            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN" });
+            state.users.push({ id: "usr-default-admin", username: "admin", password: "", role: "ADMIN", permissions: [] });
         }
         showLoginLoading(false);
         const loadingDiv = document.getElementById("firebase-loading-msg");
@@ -751,7 +773,7 @@ function createDemoData() {
     state.currentMonth = new Date().getMonth();
     
     if (state.users.length === 0) {
-        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN" });
+        state.users.push({ id: "usr-" + Date.now(), username: "admin", password: "", role: "ADMIN", permissions: [] });
     }
 
     state.pointages = {
@@ -1091,6 +1113,7 @@ function refreshAllViews() {
     if (activeTab) {
         refreshTabContent(activeTab.id);
     }
+    applyEditRestrictions();
 }
 
 function refreshTabContent(targetId) {
@@ -1222,6 +1245,10 @@ function setupEventListeners() {
     
     // Effacer le mois
     document.getElementById("clear-month-btn").addEventListener("click", () => {
+        if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+            alert("Seuls les administrateurs peuvent effacer un mois.");
+            return;
+        }
         if (confirm("Voulez-vous vraiment effacer toutes les saisies pour ce mois ?")) {
             clearActiveMonthData();
         }
@@ -1238,6 +1265,10 @@ function setupEventListeners() {
     const applyDefaultBtn = document.getElementById("apply-default-month-btn");
     if (applyDefaultBtn) {
         applyDefaultBtn.addEventListener("click", () => {
+            if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+                alert("Seuls les administrateurs peuvent appliquer le pointage par défaut.");
+                return;
+            }
             if (!state.activeEmployeeId) return;
             if (confirm("Voulez-vous appliquer le pointage par défaut (173.33h) à cet employé pour ce mois-ci ? Les saisies existantes seront écrasées.")) {
                 applyDefaultPointingToEmployees([state.activeEmployeeId]);
@@ -1917,22 +1948,26 @@ function renderEmployeeList() {
             li.style.opacity = "0.6";
         }
         
+        const typeBadge = emp.isRendement
+            ? '<span style="display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle;"><i data-lucide="zap" style="width:11px;height:11px;"></i>Rendement</span>'
+            : '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-input);color:var(--text-muted);font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:6px;vertical-align:middle;border:1px solid var(--border-color);">Horaire</span>';
         li.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
                 <input type="checkbox" class="emp-select-cb" value="${emp.id}" style="cursor: pointer;">
-                <div class="employee-item-info">
-                    <span class="employee-matricule">${emp.matricule || '—'} ${!isActive ? '(Inactif)' : ''} ${emp.isRendement ? '<span style="display:inline-block;background:#f59e0b;color:#fff;font-size:0.65rem;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px;vertical-align:middle;">RDT</span>' : ''}</span>
+                <div class="employee-item-info" style="flex:1; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                        <span class="employee-matricule">${emp.matricule || '—'}${!isActive ? ' <span style="color:var(--accent-danger);font-size:0.7rem;font-weight:600;">(Inactif)</span>' : ''}</span>
+                        ${typeBadge}
+                    </div>
                     <strong>${emp.name}</strong>
                     <span class="employee-role">${emp.role}</span>
                 </div>
             </div>
-            <div style="display: flex; gap: 4px;">
+            <div style="display: flex; gap: 4px; flex-shrink: 0;">
                 <button class="edit-employee-btn btn-text btn-sm" title="Modifier" style="padding: 4px;">
                     <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
                 </button>
-                <button class="delete-employee-btn btn-text btn-sm" title="Supprimer cet employé" style="padding: 4px; color: var(--accent-danger);">
-                    <i data-lucide="trash" style="width: 14px; height: 14px;"></i>
-                </button>
+                ${state.currentUser && state.currentUser.role === 'ADMIN' ? `<button class="delete-employee-btn btn-text btn-sm" title="Supprimer cet employé" style="padding: 4px; color: var(--accent-danger);"><i data-lucide="trash" style="width: 14px; height: 14px;"></i></button>` : ''}
             </div>
         `;
         
@@ -2073,6 +2108,10 @@ function selectEmployee(empId) {
 }
 
 function deleteEmployee(id) {
+    if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+        alert("Seuls les administrateurs peuvent supprimer un employé.");
+        return;
+    }
     state.employees = state.employees.filter(e => e.id !== id);
     delete state.pointages[id]; // Nettoyage des données associées
     
@@ -5184,19 +5223,80 @@ document.getElementById("logout-btn").addEventListener("click", () => {
     document.getElementById("login-username").value = "";
     document.getElementById("login-password").value = "";
     document.getElementById("login-overlay").style.display = "flex";
+    document.querySelectorAll(".tab-btn").forEach(t => { t.style.display = ""; });
 });
 
 // --- Gestion des Utilisateurs ---
+const USERS_TAB_DEFS = [
+    { id: "tab-pointage", label: "Pointage" },
+    { id: "tab-suivi", label: "Suivi Présence" },
+    { id: "tab-rapport-presence", label: "Rapport Présence" },
+    { id: "tab-synthese", label: "Synthèse" },
+    { id: "tab-ajustements", label: "Ajustements" },
+    { id: "tab-recap", label: "Tableau de Bord" },
+    { id: "tab-parametres", label: "Employés & Paramètres" }
+];
+
 const usersModal = document.getElementById("users-modal");
 const manageUsersBtn = document.getElementById("manage-users-btn");
 
 if (manageUsersBtn) {
     manageUsersBtn.addEventListener("click", () => {
         if (!state.currentUser || state.currentUser.role !== "ADMIN") return;
+        resetUserForm();
         renderUsersTable();
         usersModal.classList.add("active");
     });
 }
+
+function resetUserForm() {
+    document.getElementById("edit-user-id").value = "";
+    document.getElementById("new-user-username").value = "";
+    document.getElementById("new-user-password").value = "";
+    document.getElementById("new-user-password").removeAttribute("required");
+    document.getElementById("new-user-password").placeholder = "Mot de passe";
+    document.getElementById("new-user-role").value = "USER";
+    document.querySelectorAll(".perm-view-cb, .perm-edit-cb").forEach(cb => { cb.checked = false; });
+    document.getElementById("user-form-title").innerHTML = '<i data-lucide="user-plus" style="width:18px;height:18px;"></i> Ajouter un utilisateur';
+    document.getElementById("user-form-submit-btn").innerHTML = '<i data-lucide="plus" style="width:14px;height:14px;"></i> Ajouter';
+    document.getElementById("user-form-cancel-btn").style.display = "none";
+    const permSection = document.getElementById("user-permissions-section");
+    if (permSection) {
+        permSection.style.opacity = "1";
+        permSection.style.pointerEvents = "";
+    }
+    lucide.createIcons();
+}
+
+window.openEditUserModal = function(userId) {
+    const user = state.users.find(u => u.id === userId);
+    if (!user) return;
+    document.getElementById("edit-user-id").value = user.id;
+    document.getElementById("new-user-username").value = user.username;
+    document.getElementById("new-user-password").value = "";
+    document.getElementById("new-user-password").removeAttribute("required");
+    document.getElementById("new-user-password").placeholder = "Laisser vide pour garder le même";
+    document.getElementById("new-user-role").value = user.role;
+    document.getElementById("new-user-role").dispatchEvent(new Event("change"));
+    document.querySelectorAll(".perm-view-cb, .perm-edit-cb").forEach(cb => { cb.checked = false; });
+    const perms = user.permissions || {};
+    Object.keys(perms).forEach(tabId => {
+        const p = perms[tabId];
+        const viewCb = document.querySelector(`.perm-view-cb[value="${tabId}"]`);
+        const editCb = document.querySelector(`.perm-edit-cb[value="${tabId}"]`);
+        if (viewCb) viewCb.checked = (p === "view" || p === "edit");
+        if (editCb) editCb.checked = (p === "edit");
+    });
+    document.getElementById("user-form-title").innerHTML = '<i data-lucide="edit-2" style="width:18px;height:18px;"></i> Modifier : ' + user.username;
+    document.getElementById("user-form-submit-btn").innerHTML = '<i data-lucide="check" style="width:14px;height:14px;"></i> Enregistrer';
+    document.getElementById("user-form-cancel-btn").style.display = "inline-flex";
+    lucide.createIcons();
+    document.getElementById("new-user-username").focus();
+};
+
+document.getElementById("user-form-cancel-btn").addEventListener("click", () => {
+    resetUserForm();
+});
 
 function renderUsersTable() {
     const tbody = document.getElementById("users-tbody");
@@ -5205,40 +5305,112 @@ function renderUsersTable() {
     
     state.users.forEach(user => {
         const tr = document.createElement("tr");
+        const isAdmin = user.role === "ADMIN";
+        const isProtected = user.username === "admin";
+        const perms = user.permissions || {};
+        
+        const hasPassword = user.password && user.password.length > 0;
+        const maskedPass = hasPassword ? "•".repeat(Math.min(user.password.length, 8)) : "(vide)";
+        const realPass = hasPassword ? user.password : "";
+        
+        let permsHtml = "";
+        if (isAdmin) {
+            permsHtml = '<span style="font-size:0.72rem; color:var(--accent-primary); font-weight:600;">Tous les accès</span>';
+        } else if (Object.keys(perms).length === 0) {
+            permsHtml = '<span style="font-size:0.72rem; color:var(--accent-danger); font-weight:600;">Aucun accès</span>';
+        } else {
+            permsHtml = Object.keys(perms).map(tabId => {
+                const def = USERS_TAB_DEFS.find(t => t.id === tabId);
+                if (!def) return "";
+                const isEdit = perms[tabId] === "edit";
+                const bg = isEdit ? "background:#dbeafe; border-color:#93c5fd; color:#1d4ed8;" : "background:var(--bg-input); border-color:var(--border-color); color:var(--text-primary);";
+                const label = isEdit ? def.label + " ✎" : def.label;
+                return '<span style="display:inline-block; font-size:0.65rem; padding:1px 6px; border-radius:8px; border:1px solid; font-weight:500; margin:1px 2px; ' + bg + '">' + label + '</span>';
+            }).join("");
+        }
+        
         tr.innerHTML = `
-            <td>${user.username}</td>
-            <td>${user.password}</td>
-            <td><span class="status-badge status-${user.role === 'ADMIN' ? 'present' : 'absence'}">${user.role}</span></td>
-            <td>
-                ${user.username !== 'admin' ? `<button class="btn-icon" onclick="deleteUser('${user.id}')" style="color:var(--accent-danger);" title="Supprimer"><i data-lucide="trash-2"></i></button>` : ''}
+            <td style="padding:8px 12px; font-weight:600; font-size:0.85rem;">${user.username}${isProtected ? ' <span style="font-size:0.65rem; color:var(--accent-primary); font-weight:400;">(built-in)</span>' : ''}</td>
+            <td style="padding:8px 12px; font-family:monospace; font-size:0.85rem; letter-spacing:1px;">
+                <span class="pass-display" data-user-id="${user.id}" style="color:var(--text-muted);">${maskedPass}</span>
+                <input type="text" class="pass-real" data-user-id="${user.id}" value="${realPass}" readonly style="display:none; border:none; background:transparent; font-family:monospace; font-size:0.85rem; color:var(--text-primary); width:80px; padding:0;">
+                ${hasPassword ? `<button class="btn-icon toggle-pass-btn" data-user-id="${user.id}" title="Afficher / masquer" style="margin-left:4px; padding:2px; vertical-align:middle;"><i data-lucide="eye" style="width:13px;height:13px;"></i></button>` : ''}
+            </td>
+            <td style="padding:8px 12px; text-align:center;"><span class="status-badge status-${isAdmin ? 'present' : 'absence'}" style="font-size:0.72rem;">${isAdmin ? 'ADMIN' : 'USER'}</span></td>
+            <td style="padding:8px 12px; max-width:260px;">${permsHtml}</td>
+            <td style="padding:8px 12px; text-align:center;">
+                <button class="btn-icon" onclick="openEditUserModal('${user.id}')" title="Modifier" style="color:var(--accent-primary); margin-right:4px;">
+                    <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                </button>
+                ${!isProtected ? `<button class="btn-icon" onclick="deleteUser('${user.id}')" style="color:var(--accent-danger);" title="Supprimer"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>` : ''}
             </td>
         `;
         tbody.appendChild(tr);
     });
     lucide.createIcons();
+    
+    tbody.querySelectorAll(".toggle-pass-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const uid = btn.getAttribute("data-user-id");
+            const masked = tbody.querySelector(`.pass-display[data-user-id="${uid}"]`);
+            const real = tbody.querySelector(`.pass-real[data-user-id="${uid}"]`);
+            if (!masked || !real) return;
+            if (real.style.display === "none") {
+                real.style.display = "inline";
+                masked.style.display = "none";
+                btn.innerHTML = '<i data-lucide="eye-off" style="width:13px;height:13px;"></i>';
+            } else {
+                real.style.display = "none";
+                masked.style.display = "inline";
+                btn.innerHTML = '<i data-lucide="eye" style="width:13px;height:13px;"></i>';
+            }
+            lucide.createIcons();
+        });
+    });
 }
 
 document.getElementById("add-user-form").addEventListener("submit", (e) => {
     e.preventDefault();
+    const editId = document.getElementById("edit-user-id").value;
     const username = document.getElementById("new-user-username").value.trim();
     const pass = document.getElementById("new-user-password").value.trim();
     const role = document.getElementById("new-user-role").value;
     
-    if (state.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-        alert("Ce nom d'utilisateur existe déjà.");
-        return;
+    const permissions = {};
+    if (role !== "ADMIN") {
+        document.querySelectorAll(".perm-view-cb:checked").forEach(cb => {
+            const tabId = cb.value;
+            const editCb = document.querySelector(`.perm-edit-cb[value="${tabId}"]`);
+            permissions[tabId] = (editCb && editCb.checked) ? "edit" : "view";
+        });
     }
-    
-    state.users.push({
-        id: "usr-" + Date.now(),
-        username: username,
-        password: pass,
-        role: role
-    });
+
+    if (editId) {
+        const user = state.users.find(u => u.id === editId);
+        if (!user) return;
+        const duplicate = state.users.find(u => u.id !== editId && u.username.toLowerCase() === username.toLowerCase());
+        if (duplicate) { alert("Ce nom d'utilisateur existe déjà."); return; }
+        user.username = username;
+        if (pass !== "") user.password = pass;
+        user.role = role;
+        user.permissions = role === "ADMIN" ? {} : permissions;
+    } else {
+        if (!pass) { alert("Le mot de passe est obligatoire pour un nouvel utilisateur."); return; }
+        if (state.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+            alert("Ce nom d'utilisateur existe déjà."); return;
+        }
+        state.users.push({
+            id: "usr-" + Date.now(),
+            username: username,
+            password: pass,
+            role: role,
+            permissions: role === "ADMIN" ? {} : permissions
+        });
+    }
     
     saveStateToLocalStorage();
     renderUsersTable();
-    e.target.reset();
+    resetUserForm();
 });
 
 window.deleteUser = function(userId) {
@@ -5247,6 +5419,113 @@ window.deleteUser = function(userId) {
     saveStateToLocalStorage();
     renderUsersTable();
 };
+
+function canViewTab(tabId) {
+    if (!state.currentUser) return false;
+    if (state.currentUser.role === "ADMIN") return true;
+    const perms = state.currentUser.permissions || {};
+    return perms[tabId] === "view" || perms[tabId] === "edit";
+}
+
+function canEditTab(tabId) {
+    if (!state.currentUser) return false;
+    if (state.currentUser.role === "ADMIN") return true;
+    const perms = state.currentUser.permissions || {};
+    return perms[tabId] === "edit";
+}
+
+function applyTabPermissions() {
+    const allTabs = document.querySelectorAll(".tab-btn");
+    if (!state.currentUser) {
+        allTabs.forEach(t => { t.style.display = ""; });
+        return;
+    }
+    if (state.currentUser.role === "ADMIN") {
+        allTabs.forEach(t => { t.style.display = ""; });
+        return;
+    }
+    const perms = state.currentUser.permissions || {};
+    allTabs.forEach(tabBtn => {
+        const tabId = tabBtn.getAttribute("data-tab");
+        const access = perms[tabId];
+        if (!access) {
+            tabBtn.style.display = "none";
+        } else {
+            tabBtn.style.display = "";
+        }
+    });
+    const activeTab = document.querySelector(".tab-content.active");
+    if (activeTab && activeTab.id && !perms[activeTab.id]) {
+        const firstVisible = Object.keys(perms)[0];
+        if (firstVisible) {
+            const btn = document.querySelector(`.tab-btn[data-tab="${firstVisible}"]`);
+            if (btn) btn.click();
+        }
+    }
+    applyEditRestrictions();
+}
+
+function applyEditRestrictions() {
+    if (canEditTab("tab-pointage")) {
+        document.querySelectorAll("#table-body .time-input").forEach(inp => { inp.readOnly = false; inp.style.opacity = "1"; });
+        const groupBtn = document.getElementById("open-group-pointing-btn");
+        if (groupBtn) groupBtn.style.display = "";
+        const clearMonthBtn = document.getElementById("clear-month-btn");
+        if (clearMonthBtn && state.currentUser && state.currentUser.role === "ADMIN") clearMonthBtn.style.display = "";
+    } else {
+        document.querySelectorAll("#table-body .time-input").forEach(inp => { inp.readOnly = true; inp.style.opacity = "0.5"; });
+        const groupBtn = document.getElementById("open-group-pointing-btn");
+        if (groupBtn) groupBtn.style.display = "none";
+        const clearMonthBtn = document.getElementById("clear-month-btn");
+        if (clearMonthBtn) clearMonthBtn.style.display = "none";
+    }
+    if (canEditTab("tab-suivi")) {
+        document.querySelectorAll("#suivi-table-body .btn").forEach(btn => { btn.style.display = ""; btn.disabled = false; });
+    } else {
+        document.querySelectorAll("#suivi-table-body .btn").forEach(btn => { btn.style.display = "none"; });
+    }
+    if (canEditTab("tab-ajustements")) {
+        const absenceBtn = document.getElementById("absence-add-btn");
+        if (absenceBtn) { absenceBtn.style.display = ""; absenceBtn.disabled = false; }
+        const holidayBtn = document.getElementById("holiday-add-btn");
+        if (holidayBtn) { holidayBtn.style.display = ""; holidayBtn.disabled = false; }
+    } else {
+        const absenceBtn = document.getElementById("absence-add-btn");
+        if (absenceBtn) absenceBtn.style.display = "none";
+        const holidayBtn = document.getElementById("holiday-add-btn");
+        if (holidayBtn) holidayBtn.style.display = "none";
+    }
+}
+
+document.getElementById("user-permissions-tbody").addEventListener("change", function(e) {
+    const cb = e.target;
+    if (cb.classList.contains("perm-edit-cb")) {
+        if (cb.checked) {
+            const viewCb = this.querySelector(`.perm-view-cb[value="${cb.value}"]`);
+            if (viewCb) viewCb.checked = true;
+        }
+    }
+    if (cb.classList.contains("perm-view-cb")) {
+        if (!cb.checked) {
+            const editCb = this.querySelector(`.perm-edit-cb[value="${cb.value}"]`);
+            if (editCb) editCb.checked = false;
+        }
+    }
+});
+
+document.getElementById("new-user-role").addEventListener("change", function() {
+    const permSection = document.getElementById("user-permissions-section");
+    if (this.value === "ADMIN") {
+        permSection.style.opacity = "0.4";
+        permSection.style.pointerEvents = "none";
+        permSection.querySelector("label").innerHTML = '<i data-lucide="shield-check" style="width:13px;height:13px;vertical-align:-2px;"></i> Accès aux onglets <span style="font-weight:400; font-size:0.7rem; color:var(--text-muted);">(ADMIN = tous les accès automatiquement)</span>';
+    } else {
+        permSection.style.opacity = "1";
+        permSection.style.pointerEvents = "";
+        permSection.querySelector("label").innerHTML = '<i data-lucide="shield" style="width:13px;height:13px;vertical-align:-2px;"></i> Accès aux onglets <span style="font-weight:400; font-size:0.7rem; color:var(--text-muted);">(Voir = consultation seule, Modifier = peut saisir/éditer)</span>';
+    }
+    lucide.createIcons();
+});
 
 // --- Clôture du Mois ---
 const closeMonthBtn = document.getElementById("close-month-btn");
@@ -5741,7 +6020,7 @@ function renderSuiviJournalier() {
                             <input type="radio" name="status-done-${emp.id}" style="display: none;" onchange="setSuiviPresence('${emp.id}', '${dateKey}', 'absent')" ${!isPresent ? 'checked' : ''}>
                             <i data-lucide="x-circle" style="width: 14px; height: 14px;"></i> Absent
                         </label>
-                        <button class="btn btn-sm" onclick="clearSuiviPresenceEmploye('${emp.id}', '${dateKey}')" title="Effacer ce pointage" style="padding: 4px 8px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c;">
+                        <button class="btn btn-sm" onclick="clearSuiviPresenceEmploye('${emp.id}', '${dateKey}')" title="Effacer ce pointage" style="padding: 4px 8px; background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; ${state.currentUser && state.currentUser.role === 'ADMIN' ? '' : 'display:none;'}">
                             <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
                         </button>
                     </div>
@@ -5766,6 +6045,10 @@ function toggleSuiviSelectAll(cb) {
 
 // Effacer le pointage d'un seul employé pour un jour donné
 window.clearSuiviPresenceEmploye = function(empId, dateKey) {
+    if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+        alert("Seuls les administrateurs peuvent supprimer un pointage.");
+        return;
+    }
     if (state.pointages[empId] && state.pointages[empId][dateKey]) {
         delete state.pointages[empId][dateKey];
     }
@@ -6378,6 +6661,10 @@ function renderInactiveEmployeesTab() {
 
 // Fonction pour effacer tout le pointage Suivi Présence d'un jour
 window.clearSuiviPresenceCeJour = function() {
+    if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+        alert("Seuls les administrateurs peuvent supprimer les pointages.");
+        return;
+    }
     const dateInput = document.getElementById("suivi-date-input");
     if (!dateInput || !dateInput.value) return;
     const dateVal = dateInput.value;
