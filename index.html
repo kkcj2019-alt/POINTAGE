@@ -289,6 +289,12 @@
                 <!-- Actions Export/Print Pointage removed — now in header -->
             </div>
 
+            <!-- Mini Calendrier Navigation Rapide -->
+            <div id="mini-calendar" style="display:flex; gap:4px; padding:8px 24px; flex-wrap:wrap; align-items:center; border-bottom:1px solid var(--border-color); background:var(--bg-card);">
+                <i data-lucide="calendar" style="width:14px; height:14px; color:var(--text-muted); margin-right:4px;"></i>
+                <!-- Rempli dynamiquement par JS : boutons 1..31 -->
+            </div>
+
 
             <!-- KPI Cards Summary -->
             <section class="kpi-container">
@@ -942,6 +948,25 @@
                     <div id="inactive-emp-list-container" class="table-container">
                         <!-- Rempli dynamiquement par renderInactiveEmployeesTab() -->
                     </div>
+                </div>
+
+                <!-- Section Sauvegarde / Restauration -->
+                <div id="backup-section" style="margin-top:30px; padding:20px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-lg);">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px;">
+                        <i data-lucide="shield-check" style="color:var(--accent-primary); width:20px; height:20px;"></i>
+                        <h3 style="margin:0; font-size:1.1rem; font-family:var(--font-heading); font-weight:600;">Sauvegarde & Restauration</h3>
+                    </div>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:16px;">Exportez ou importez l'intégralité des données de l'application (employés, pointages, paramètres).</p>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <button id="export-json-btn" class="btn btn-primary" onclick="exportFullBackup()">
+                            <i data-lucide="download"></i> Exporter JSON
+                        </button>
+                        <button id="import-json-btn" class="btn btn-secondary" onclick="document.getElementById('import-json-file').click()">
+                            <i data-lucide="upload"></i> Importer JSON
+                        </button>
+                        <input type="file" id="import-json-file" accept=".json" style="display:none;" onchange="importFullBackup(this)">
+                    </div>
+                    <div id="backup-status-msg" style="margin-top:12px; display:none;"></div>
                 </div>
 
             </div> <!-- End tab-parametres -->

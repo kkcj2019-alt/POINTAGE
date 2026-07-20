@@ -418,12 +418,18 @@ function setupAuthUI() {
         
         const closeBtn = document.getElementById("close-month-btn");
         if (closeBtn) closeBtn.style.display = "inline-flex";
+
+        const backupSection = document.getElementById("backup-section");
+        if (backupSection) backupSection.style.display = "block";
     } else {
         const manageBtn = document.getElementById("manage-users-btn");
         if (manageBtn) manageBtn.style.display = "none";
         
         const closeBtn = document.getElementById("close-month-btn");
         if (closeBtn) closeBtn.style.display = "none";
+
+        const backupSection = document.getElementById("backup-section");
+        if (backupSection) backupSection.style.display = "none";
     }
 }
 
@@ -502,6 +508,7 @@ function loadStateFromLocalStorage() {
             if (session.currentUser && elapsed < SESSION_TIMEOUT_MS) {
                 state.currentUser = session.currentUser;
                 document.getElementById("login-overlay").style.display = "none";
+                setupAuthUI();
             } else {
                 state.currentUser = null;
                 localStorage.removeItem("pps_session");
@@ -519,6 +526,7 @@ function loadStateFromLocalStorage() {
                         loginTime: Date.now()
                     }));
                     document.getElementById("login-overlay").style.display = "none";
+                    setupAuthUI();
                 }
             }
         }
@@ -1913,7 +1921,7 @@ function renderEmployeeList() {
             <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" class="emp-select-cb" value="${emp.id}" style="cursor: pointer;">
                 <div class="employee-item-info">
-                    <span class="employee-matricule">${emp.matricule || '—'} ${!isActive ? '(Inactif)' : ''}</span>
+                    <span class="employee-matricule">${emp.matricule || '—'} ${!isActive ? '(Inactif)' : ''} ${emp.isRendement ? '<span style="display:inline-block;background:#f59e0b;color:#fff;font-size:0.65rem;padding:1px 6px;border-radius:8px;font-weight:700;margin-left:4px;vertical-align:middle;">RDT</span>' : ''}</span>
                     <strong>${emp.name}</strong>
                     <span class="employee-role">${emp.role}</span>
                 </div>
@@ -2410,9 +2418,14 @@ function generateTable() {
             </td>
             
             <!-- Totaux -->
-            <td class="total-cell val-total-jour">${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span></td>
-            <td class="total-cell val-total-nuit">${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span></td>
-            <td class="total-cell highlight-col val-total-global">${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span></td>
+            ${(empRdt && empRdt.isRendement && data.arrivee && data.fin) ?
+                `<td class="total-cell val-total-jour" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a; letter-spacing:0.5px;">RENDEMENT</td>
+                 <td class="total-cell val-total-nuit" style="text-align:center; color:#9ca3af;">—</td>
+                 <td class="total-cell highlight-col val-total-global" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT</td>` :
+                `<td class="total-cell val-total-jour">${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span></td>
+                <td class="total-cell val-total-nuit">${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span></td>
+                <td class="total-cell highlight-col val-total-global">${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span></td>`
+            }
         `;
         
         if (tbody) tbody.appendChild(tr);
@@ -2493,9 +2506,12 @@ function generateTable() {
             trSynth.innerHTML = `
                 <td style="padding: 12px 16px; text-align: left;">${dayLabelSynth}</td>
                 <td style="padding: 12px 16px; text-align: left;">${displayStatus}</td>
-                <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
-                <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalNightMinutes > 0 ? `${minutesToHoursStr(legalNightMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
-                <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${totalMinutes > 0 ? 'var(--accent-total)' : '#9ca3af'};">${totalMinutes > 0 ? `${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
+                ${empRdt && empRdt.isRendement && data.arrivee && data.fin ?
+                    `<td style="padding: 12px 16px; text-align: center; font-weight: 800; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;" colspan="3">RENDEMENT</td>` :
+                    `<td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
+                    <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalNightMinutes > 0 ? `${minutesToHoursStr(legalNightMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
+                    <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${totalMinutes > 0 ? 'var(--accent-total)' : '#9ca3af'};">${totalMinutes > 0 ? `${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>`
+                }
             `;
             synthTbody.appendChild(trSynth);
         }
@@ -2913,9 +2929,12 @@ function generateRecapTable() {
             <td style="padding: 12px 16px; color:#6b7280; font-size:0.8rem;">${emp.matricule || '—'}</td>
             <td style="padding: 12px 16px; text-align:center; color:#059669; font-weight:600;">${workedDays}</td>
             <td style="padding: 12px 16px; text-align:center; color:#dc2626; font-weight:600;">${absentDays}</td>
-            <td style="padding: 12px 16px; text-align:center;">${minutesToHoursStr(totalJourM)}</td>
-            <td style="padding: 12px 16px; text-align:center;">${minutesToHoursStr(totalNuitM)}</td>
-            <td style="padding: 12px 16px; text-align:center; font-weight:700; color:#0f172a;">${minutesToHoursStr(finalTotalHours)}</td>
+            ${emp && emp.isRendement && workedDays > 0 ?
+                `<td style="padding: 12px 16px; text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;" colspan="3">RENDEMENT</td>` :
+                `<td style="padding: 12px 16px; text-align:center;">${minutesToHoursStr(totalJourM)}</td>
+                <td style="padding: 12px 16px; text-align:center;">${minutesToHoursStr(totalNuitM)}</td>
+                <td style="padding: 12px 16px; text-align:center; font-weight:700; color:#0f172a;">${minutesToHoursStr(finalTotalHours)}</td>`
+            }
             <td style="padding: 12px 16px; text-align:center; color:#0284c7; font-weight:600;">${transportStr}</td>
             <td style="padding: 12px 16px; text-align:center;">${alertStatus}</td>
             <td style="padding: 8px 12px; text-align:center;">
@@ -3526,9 +3545,21 @@ function recalculateRow(trElement) {
     const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
     
     // Afficher les résultats sur la ligne
-    trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>`;
-    trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>`;
-    trElement.querySelector(".val-total-global").innerHTML = `${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>`;
+    if (empRdt2 && empRdt2.isRendement && data.arrivee && data.fin) {
+        trElement.querySelector(".val-total-jour").innerHTML = `RENDEMENT`;
+        trElement.querySelector(".val-total-jour").style.cssText = "text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;";
+        trElement.querySelector(".val-total-nuit").innerHTML = `—`;
+        trElement.querySelector(".val-total-nuit").style.cssText = "text-align:center; color:#9ca3af;";
+        trElement.querySelector(".val-total-global").innerHTML = `RENDEMENT`;
+        trElement.querySelector(".val-total-global").style.cssText = "text-align:center; font-weight:800; color:#b45309; background:#fffbeb;";
+    } else {
+        trElement.querySelector(".val-total-jour").style.cssText = "";
+        trElement.querySelector(".val-total-nuit").style.cssText = "";
+        trElement.querySelector(".val-total-global").style.cssText = "";
+        trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>`;
+        trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>`;
+        trElement.querySelector(".val-total-global").innerHTML = `${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>`;
+    }
     
     recalculateEntireMonthKPIs();
 }
@@ -3986,9 +4017,12 @@ function exportToPDF(employeeIds) {
                     <td style="color:#888">${data.reprise || '&mdash;'}</td>
                     <td>${data.fin || '&mdash;'}</td>
                     ${nightCols}
-                    <td style="color:#1d4ed8; font-weight:600">${minutesToHoursStr(legalDay)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span></td>
-                    <td style="color:#7c3aed; font-weight:600">${minutesToHoursStr(legalNight)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span></td>
-                    <td style="color:#059669; font-weight:700; font-size:1.05em">${minutesToHoursStr(total)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(total)}</span></td>
+                    ${emp.isRendement && data.arrivee && data.fin ?
+                        `<td style="color:#b45309; font-weight:800; text-align:center; background:#fffbeb;" colspan="3">RENDEMENT</td>` :
+                        `<td style="color:#1d4ed8; font-weight:600">${minutesToHoursStr(legalDay)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span></td>
+                        <td style="color:#7c3aed; font-weight:600">${minutesToHoursStr(legalNight)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span></td>
+                        <td style="color:#059669; font-weight:700; font-size:1.05em">${minutesToHoursStr(total)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(total)}</span></td>`
+                    }
                 </tr>
             `;
         }
@@ -4277,9 +4311,12 @@ function exportSynthesisPDF(employeeIds) {
                 <tr style="background:${rowBg}">
                     <td style="text-align:left;padding:8px 10px;">${dayLabel}</td>
                     <td>${displayStatus}</td>
-                    <td style="color:#1d4ed8;font-weight:600;">${legalDay > 0 ? `${minutesToHoursStr(legalDay)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
-                    <td style="color:#7c3aed;font-weight:600;">${legalNight > 0 ? `${minutesToHoursStr(legalNight)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
-                    <td style="color:#059669;font-weight:700;">${totalMinutes > 0 ? `${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
+                    ${emp && emp.isRendement && data.arrivee && data.fin ?
+                        `<td style="color:#b45309;font-weight:800;text-align:center;" colspan="3">RENDEMENT</td>` :
+                        `<td style="color:#1d4ed8;font-weight:600;">${legalDay > 0 ? `${minutesToHoursStr(legalDay)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
+                        <td style="color:#7c3aed;font-weight:600;">${legalNight > 0 ? `${minutesToHoursStr(legalNight)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
+                        <td style="color:#059669;font-weight:700;">${totalMinutes > 0 ? `${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>`
+                    }
                 </tr>
             `;
         }
@@ -6378,4 +6415,209 @@ window.clearSuiviPresenceCeJour = function() {
     } else {
         alert("Aucun pointage trouvé pour le " + dateAffichage + ".");
     }
+};
+
+// ==========================================================================
+// EXPORT / IMPORT JSON (BACKUP / RESTORE)
+// ==========================================================================
+function exportFullBackup() {
+    const backupData = {
+        _backupDate: new Date().toISOString(),
+        _backupVersion: "1.0",
+        employees: state.employees || [],
+        pointages: state.pointages || {},
+        dayDetails: state.dayDetails || {},
+        customHolidays: state.customHolidays || {},
+        companyStructure: state.companyStructure || {},
+        users: state.users || [],
+        rattrapages: state.rattrapages || {},
+        absencePeriods: state.absencePeriods || {},
+        closedMonths: state.closedMonths || [],
+        absenceAlerts: state.absenceAlerts || {}
+    };
+    const json = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const now = new Date();
+    const ts = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+    a.download = "pointagepro-backup-" + ts + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showBackupMsg("Sauvegarde exportée avec succès.", "success");
+}
+
+function importFullBackup(inputEl) {
+    const file = inputEl && inputEl.files && inputEl.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!data.employees && !data.pointages) {
+                showBackupMsg("Fichier invalide : pas de données PointagePro.", "error");
+                return;
+            }
+            const code = prompt("Entrez le code de restauration (défaut: 1234) :");
+            if (code === null) return;
+            if (code !== "1234") {
+                showBackupMsg("Code incorrect. Restauration annulée.", "error");
+                return;
+            }
+            if (!confirm("ATTENTION : Cette action va remplacer TOUTES les données actuelles. Continuer ?")) return;
+
+            state.employees = data.employees || [];
+            state.pointages = data.pointages || {};
+            state.dayDetails = data.dayDetails || {};
+            state.customHolidays = data.customHolidays || {};
+            state.companyStructure = data.companyStructure || {};
+            state.users = data.users || [];
+            state.rattrapages = data.rattrapages || [];
+            state.absencePeriods = data.absencePeriods || {};
+            state.closedMonths = data.closedMonths || [];
+            state.absenceAlerts = data.absenceAlerts || {};
+
+            saveStateToLocalStorage();
+            refreshAllViews();
+            setupAuthUI();
+            showBackupMsg("Restauration terminée ! Données importées depuis " + (data._backupDate || "sauvegarde inconnue") + ".", "success");
+        } catch(err) {
+            showBackupMsg("Erreur de lecture du fichier : " + err.message, "error");
+        }
+    };
+    reader.readAsText(file);
+    inputEl.value = "";
+}
+
+function showBackupMsg(msg, type) {
+    const el = document.getElementById("backup-status-msg");
+    if (!el) return;
+    el.style.display = "block";
+    el.style.padding = "10px 14px";
+    el.style.borderRadius = "8px";
+    el.style.fontSize = "0.85rem";
+    el.style.fontWeight = "600";
+    if (type === "success") {
+        el.style.background = "#ecfdf5";
+        el.style.color = "#059669";
+        el.style.border = "1px solid #a7f3d0";
+    } else {
+        el.style.background = "#fef2f2";
+        el.style.color = "#dc2626";
+        el.style.border = "1px solid #fecaca";
+    }
+    el.textContent = msg;
+    setTimeout(() => { el.style.display = "none"; }, 8000);
+}
+
+// ==========================================================================
+// SAUVEGARDE AUTO À 17H00 (ADMIN SEULEMENT)
+// ==========================================================================
+let lastAutoBackupDate = null;
+
+function checkAutoBackup() {
+    if (!state.currentUser || state.currentUser.role !== "ADMIN") return;
+    const now = new Date();
+    const todayKey = now.toISOString().slice(0, 10);
+    if (now.getHours() >= 17 && lastAutoBackupDate !== todayKey) {
+        lastAutoBackupDate = todayKey;
+        const backupData = {
+            _backupDate: now.toISOString(),
+            _backupVersion: "1.0",
+            _autoBackup: true,
+            employees: state.employees || [],
+            pointages: state.pointages || {},
+            dayDetails: state.dayDetails || {},
+            customHolidays: state.customHolidays || {},
+            companyStructure: state.companyStructure || {},
+            users: state.users || [],
+            rattrapages: state.rattrapages || {},
+            absencePeriods: state.absencePeriods || {},
+            closedMonths: state.closedMonths || [],
+            absenceAlerts: state.absenceAlerts || {}
+        };
+        const json = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "pointagepro-auto-backup-" + todayKey + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showAutoBackupBanner();
+    }
+}
+
+function showAutoBackupBanner() {
+    let banner = document.getElementById("auto-backup-banner");
+    if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "auto-backup-banner";
+        banner.style.cssText = "position:fixed; top:60px; right:20px; z-index:9999; background:#ecfdf5; border:2px solid #a7f3d0; border-radius:12px; padding:12px 20px; display:flex; align-items:center; gap:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); font-size:0.85rem; font-weight:600; color:#059669; transition: all 0.3s;";
+        banner.innerHTML = '<span style="font-size:1.2rem;">✅</span> Sauvegarde auto téléchargée (17h00)';
+        document.body.appendChild(banner);
+    }
+    banner.style.display = "flex";
+    setTimeout(() => { banner.style.display = "none"; }, 10000);
+}
+
+setInterval(checkAutoBackup, 60000);
+
+// ==========================================================================
+// MINI CALENDRIER NAVIGATION RAPIDE (POINTAGE)
+// ==========================================================================
+function renderMiniCalendar() {
+    const container = document.getElementById("mini-calendar");
+    if (!container) return;
+    const daysCount = getDaysInMonth(state.currentYear, state.currentMonth);
+    const monthNames = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+    let html = `<i data-lucide="calendar" style="width:14px; height:14px; color:var(--text-muted); margin-right:4px;"></i>`;
+    html += `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; margin-right:6px; white-space:nowrap;">${monthNames[state.currentMonth]} ${state.currentYear} :</span>`;
+    for (let d = 1; d <= daysCount; d++) {
+        const dayStr = String(d).padStart(2, "0");
+        const monthStr = String(state.currentMonth + 1).padStart(2, "0");
+        const dateKey = state.currentYear + "-" + monthStr + "-" + dayStr;
+        const hasData = state.pointages[state.activeEmployeeId] && state.pointages[state.activeEmployeeId][dateKey];
+        const isToday = (new Date()).getDate() === d && (new Date()).getMonth() === state.currentMonth && (new Date()).getFullYear() === state.currentYear;
+        let btnStyle = "width:24px; height:24px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:0.65rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;";
+        if (isToday) btnStyle += "background:var(--accent-primary); color:#fff; border-color:var(--accent-primary); font-weight:800;";
+        else if (hasData) btnStyle += "background:#dcfce7; color:#166534; border-color:#86efac;";
+        html += `<button class="mini-cal-day" data-day="${d}" style="${btnStyle}" title="${dayStr}/${monthStr}">${d}</button>`;
+    }
+    container.innerHTML = html;
+    container.querySelectorAll(".mini-cal-day").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const day = parseInt(btn.dataset.day, 10);
+            const tbody = document.getElementById("table-body");
+            if (tbody) {
+                const monthStr = String(state.currentMonth + 1).padStart(2, "0");
+                const dayStr = String(day).padStart(2, "0");
+                const dateKey = state.currentYear + "-" + monthStr + "-" + dayStr;
+                const targetRow = tbody.querySelector(`tr[data-date="${dateKey}"]`);
+                if (targetRow) {
+                    targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                    targetRow.style.transition = "background 0.3s";
+                    targetRow.style.background = "rgba(59,130,246,0.15)";
+                    setTimeout(() => { targetRow.style.background = ""; }, 1500);
+                    const firstInput = targetRow.querySelector(".time-input");
+                    if (firstInput) firstInput.focus();
+                }
+            }
+        });
+        btn.addEventListener("mouseenter", () => { if (!(new Date()).getDate() === parseInt(btn.dataset.day)) btn.style.transform = "scale(1.15)"; });
+        btn.addEventListener("mouseleave", () => { btn.style.transform = "scale(1)"; });
+    });
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+const _origRefreshAllViews = refreshAllViews;
+refreshAllViews = function() {
+    _origRefreshAllViews();
+    renderMiniCalendar();
 };
