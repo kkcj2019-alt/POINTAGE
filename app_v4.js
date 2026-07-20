@@ -968,7 +968,7 @@ function calculateLegalNightMinutes(startStr, pauseStr, resumeStr, endStr) {
 /**
  * Calcule et unifie toutes les durées journalières selon le type de journée (MP, Rendement, Événement, Absence...).
  */
-function getRowCalculations(data, detail, periodPaid) {
+function getRowCalculations(data, detail, periodPaid, employeeIsRendement) {
     let mpMode = data.arrivee && data.arrivee.toUpperCase() === "MP";
     
     let rawJourMinutes = calculateShiftMinutes(data.arrivee, data.pause, data.reprise, data.fin);
@@ -979,7 +979,11 @@ function getRowCalculations(data, detail, periodPaid) {
     let legalNightMinutes = 0;
     let legalDayMinutes = 0;
     
-    if (mpMode) {
+    if (employeeIsRendement && data.arrivee && data.fin) {
+        totalMinutes = 480;
+        legalDayMinutes = 480;
+        legalNightMinutes = 0;
+    } else if (mpMode) {
         totalMinutes = 480; // 8h
         legalDayMinutes = 480;
         legalNightMinutes = 0;
@@ -2288,7 +2292,8 @@ function generateTable() {
         const holidayClass = isHoliday ? "holiday" : "";
         const nightActiveClass = data.nuitActive ? "night-active" : "";
         
-        const calcs = getRowCalculations(data, detail, periodPaid);
+        const empRdt = state.employees.find(e => e.id === state.activeEmployeeId);
+        const calcs = getRowCalculations(data, detail, periodPaid, empRdt && empRdt.isRendement);
         const legalDayMinutes = calcs.legalDayMinutes;
         const legalNightMinutes = calcs.legalNightMinutes;
         const totalMinutes = calcs.totalMinutes;
@@ -2833,7 +2838,7 @@ function generateRecapTable() {
                 }
             }
             
-            const calcs = getRowCalculations(data, detail, periodPaid);
+            const calcs = getRowCalculations(data, detail, periodPaid, emp && emp.isRendement);
             totalJourM += calcs.legalDayMinutes;
             totalNuitM += calcs.legalNightMinutes;
             totalHoursM += calcs.totalMinutes;
@@ -3516,7 +3521,8 @@ function recalculateRow(trElement) {
     }
     
     // Utiliser la fonction unifiée getRowCalculations
-    const calcs = getRowCalculations(data, detail, periodPaid);
+    const empRdt2 = state.employees.find(e => e.id === state.activeEmployeeId);
+    const calcs = getRowCalculations(data, detail, periodPaid, empRdt2 && empRdt2.isRendement);
     const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
     
     // Afficher les résultats sur la ligne
@@ -3564,7 +3570,8 @@ function recalculateEntireMonthKPIs() {
             }
         }
         
-        const calcs = getRowCalculations(data, detail, periodPaid);
+        const empRdt3 = state.employees.find(e => e.id === state.activeEmployeeId);
+        const calcs = getRowCalculations(data, detail, periodPaid, empRdt3 && empRdt3.isRendement);
         const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
         
         totalJourMin += legalDayMinutes;
@@ -4251,7 +4258,7 @@ function exportSynthesisPDF(employeeIds) {
             
             let displayStatus = `<span style="color:${sColor};background:${sBg};padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:600;white-space:nowrap;">${sLabel}</span>`;
             if (data.rendementActive) {
-                const calcs = getRowCalculations(data, detail, periodPaid);
+                const calcs = getRowCalculations(data, detail, periodPaid, emp && emp.isRendement);
                 if (calcs.pointedMinutes > 0) {
                     displayStatus += `<br><span style="color:#0284c7; font-size:0.65rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement + ${minutesToDecimal(calcs.pointedMinutes)}</span>`;
                 } else {
@@ -5576,21 +5583,26 @@ function renderSuiviJournalier() {
         const daysInMonth = getDaysInMonth(year, month);
         const monthNames = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
         let indicatorHTML = `<span style="font-size:0.72rem; color:var(--text-muted); font-weight:600; margin-right:6px;">Jours ouvrés :</span>`;
+        const filteredEmps = sortedEmps.filter(emp => {
+            if (!isEmployeeActiveAtDate(emp, year, month - 1)) return false;
+            if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) return false;
+            return true;
+        });
+        const totalEmps = filteredEmps.length || 1;
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, month - 1, d);
             const dayOfWeek = dateObj.getDay();
             if (dayOfWeek === 0 || dayOfWeek === 6) continue;
             const dKey = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            let isPointed = false;
-            sortedEmps.forEach(emp => {
-                if (!isEmployeeActiveAtDate(emp, year, month - 1)) return;
-                if (suiviSelectedDept !== "all" && (emp.departement || "Non Défini").trim() !== suiviSelectedDept) return;
+            let pointedCount = 0;
+            filteredEmps.forEach(emp => {
                 const pd = (state.pointages[emp.id] && state.pointages[emp.id][dKey]);
-                if (pd && (pd.status === "present" || pd.arrivee)) isPointed = true;
+                if (pd && (pd.status === "present" || pd.arrivee)) pointedCount++;
             });
+            const pct = Math.round((pointedCount / totalEmps) * 100);
             const dayAbbr = ["Di","Lu","Ma","Me","Je","Ve","Sa"][dayOfWeek];
-            const bg = isPointed ? "background:#10b981; color:#fff;" : "background:#ef4444; color:#fff;";
-            indicatorHTML += `<span title="${dayAbbr} ${d} ${monthNames[month-1]}${isPointed ? ' (pointé)' : ' (à pointer)'}" style="display:inline-flex; flex-direction:column; align-items:center; min-width:22px; padding:2px 3px; border-radius:4px; font-size:0.6rem; line-height:1.1; cursor:default; ${bg}"><span style="font-weight:700;">${d}</span><span style="font-size:0.55rem; opacity:0.85;">${dayAbbr}</span></span>`;
+            const bg = `background:linear-gradient(to top, #10b981 0%, #10b981 ${pct}%, #ef4444 ${pct}%, #ef4444 100%); color:#fff;`;
+            indicatorHTML += `<span data-day="${d}" onclick="suiviJumpToDate(${d})" title="${dayAbbr} ${d} ${monthNames[month-1]} — ${pointedCount}/${filteredEmps.length} pointés (${pct}%)" style="display:inline-flex; flex-direction:column; align-items:center; min-width:22px; padding:2px 3px; border-radius:4px; font-size:0.6rem; line-height:1.1; cursor:pointer; ${bg}"><span style="font-weight:700;">${d}</span><span style="font-size:0.55rem; opacity:0.85;">${dayAbbr}</span></span>`;
         }
         weekIndicatorEl.innerHTML = indicatorHTML;
     }
@@ -5768,6 +5780,16 @@ function markBulkPresence(isPresent) {
             generatePresenceReport();
         }
     }
+}
+
+function suiviJumpToDate(day) {
+    const dateInput = document.getElementById("suivi-date-input");
+    if (!dateInput) return;
+    const year = state.currentYear;
+    const month = String(state.currentMonth + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    dateInput.value = `${year}-${month}-${dayStr}`;
+    renderSuiviJournalier();
 }
 
 function setSuiviPresence(empId, dateKey, status) {
