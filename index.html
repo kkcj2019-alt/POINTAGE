@@ -857,7 +857,7 @@
                         <button class="btn btn-secondary" onclick="openStructureConfigModal()">
                             <i data-lucide="building-2"></i> Gérer Depts &amp; Fonctions
                         </button>
-                        <button id="add-emp-params-btn" class="btn btn-primary" onclick="document.getElementById('add-employee-modal').classList.add('active')">
+                        <button id="add-emp-params-btn" class="btn btn-primary" onclick="populateEmployeeFormSelects('', '', 'add'); document.getElementById('add-employee-modal').classList.add('active')">
                             <i data-lucide="plus"></i> Ajouter un Employé
                         </button>
                     </div>
@@ -968,8 +968,9 @@
                 </div>
                 <div class="form-group">
                     <label for="employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
-                    <div id="add-role-dropdown" class="autocomplete-dropdown"></div>
+                    <select id="employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1022,8 +1023,9 @@
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="edit-employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
-                    <div id="edit-role-dropdown" class="autocomplete-dropdown"></div>
+                    <select id="edit-employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="edit-employee-start-date-input">Date de début / d'embauche <span style="color: var(--accent-danger);">*</span></label>
@@ -1331,8 +1333,9 @@
                 </p>
                 <div class="form-group">
                     <label for="bulk-employee-role-input">Poste / Fonction <span style="color: var(--accent-danger);">*</span></label>
-                    <input type="text" id="bulk-employee-role-input" placeholder="Tapez ou sélectionnez une fonction..." required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); position:relative; z-index:10;" autocomplete="off">
-                    <div id="bulk-role-dropdown" class="autocomplete-dropdown"></div>
+                    <select id="bulk-employee-role-input" required style="width:100%; padding:8px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                        <option value="">Sélectionnez une fonction...</option>
+                    </select>
                 </div>
                 <div class="form-group" style="margin-top: 12px;">
                     <label for="bulk-employee-departement-input">Département résolu</label>

@@ -125,23 +125,23 @@ let selectedDeptConfig = null;
 function populateEmployeeFormSelects(selectedDeptValue = "", selectedFoncValue = "", formType = "add") {
     let roleInputId = "employee-role-input";
     let deptInputId = "employee-departement-input";
-    let dropdownId  = "add-role-dropdown";
+    let datalistId  = "role-datalist-add";
     if (formType === "edit") {
         roleInputId = "edit-employee-role-input";
         deptInputId = "edit-employee-departement-input";
-        dropdownId  = "edit-role-dropdown";
+        datalistId  = "role-datalist-edit";
     } else if (formType === "bulk") {
         roleInputId = "bulk-employee-role-input";
         deptInputId = "bulk-employee-departement-input";
-        dropdownId  = "bulk-role-dropdown";
+        datalistId  = "role-datalist-bulk";
     }
 
     const roleInput = document.getElementById(roleInputId);
     const deptInput = document.getElementById(deptInputId);
-    const dropdown  = document.getElementById(dropdownId);
-    if (!roleInput || !dropdown) return;
+    const datalist  = document.getElementById(datalistId);
+    if (!roleInput) return;
 
-    if (!state.companyStructure) state.companyStructure = {};
+    if (!state.companyStructure || Array.isArray(state.companyStructure)) state.companyStructure = {};
     const rolesWithDept = [];
     Object.entries(state.companyStructure).forEach(([dept, foncs]) => {
         if (Array.isArray(foncs)) foncs.forEach(f => { if (f) rolesWithDept.push({ name: f, dept: dept }); });
@@ -161,56 +161,26 @@ function populateEmployeeFormSelects(selectedDeptValue = "", selectedFoncValue =
 
     const sortedRoles = rolesWithDept.sort((a, b) => a.name.localeCompare(b.name));
 
-    function showDropdown(filter) {
-        const q = (filter || "").trim().toLowerCase();
-        const matches = q ? sortedRoles.filter(r => r.name.toLowerCase().includes(q)) : sortedRoles;
-        if (matches.length === 0) { dropdown.style.display = "none"; return; }
-        dropdown.innerHTML = "";
-        matches.forEach(r => {
-            const item = document.createElement("div");
-            item.className = "ac-item";
-            item.innerHTML = r.name + (r.dept ? '<span class="ac-dept">(' + r.dept + ')</span>' : '');
-            item.addEventListener("mousedown", (e) => {
-                e.preventDefault();
-                roleInput.value = r.name;
-                if (deptInput) {
-                    let fd = "";
-                    Object.entries(state.companyStructure || {}).forEach(([d, fs]) => {
-                        if (Array.isArray(fs) && fs.includes(r.name)) fd = d;
-                    });
-                    deptInput.value = fd || r.dept || "Général";
-                }
-                dropdown.style.display = "none";
-            });
-            dropdown.appendChild(item);
+    if (datalist) {
+        datalist.innerHTML = "";
+        sortedRoles.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.name;
+            opt.dataset.dept = r.dept || "";
+            datalist.appendChild(opt);
         });
-        const parentFormGroup = roleInput.closest('.form-group');
-        const groupRect = parentFormGroup ? parentFormGroup.getBoundingClientRect() : { left: 0, top: 0 };
-        const rect = roleInput.getBoundingClientRect();
-        dropdown.style.left = (rect.left - groupRect.left) + "px";
-        dropdown.style.top = (rect.height + 2) + "px";
-        dropdown.style.width = rect.width + "px";
-        dropdown.style.display = "block";
+    } else if (roleInput.tagName.toLowerCase() === 'select') {
+        roleInput.innerHTML = '<option value="">S\u00E9lectionnez une fonction...</option>';
+        sortedRoles.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.name;
+            opt.textContent = r.name;
+            opt.dataset.dept = r.dept || "";
+            roleInput.appendChild(opt);
+        });
     }
 
-    if (roleInput._acBound) {
-        roleInput.removeEventListener("input", roleInput._acBound);
-        roleInput.removeEventListener("focus", roleInput._acFocusBound);
-        roleInput.removeEventListener("blur", roleInput._acBlurBound);
-    }
-
-    const onInput = () => { showDropdown(roleInput.value); };
-    const onFocus = () => { showDropdown(roleInput.value); };
-    const onBlur  = () => { setTimeout(() => { dropdown.style.display = "none"; }, 150); };
-
-    roleInput._acBound = onInput;
-    roleInput._acFocusBound = onFocus;
-    roleInput._acBlurBound = onBlur;
-    roleInput.addEventListener("input", onInput);
-    roleInput.addEventListener("focus", onFocus);
-    roleInput.addEventListener("blur", onBlur);
-
-    if (selectedFoncValue) roleInput.value = selectedFoncValue;
+    roleInput.value = selectedFoncValue || "";
 
     const updateDept = () => {
         const val = roleInput.value.trim();
@@ -219,11 +189,14 @@ function populateEmployeeFormSelects(selectedDeptValue = "", selectedFoncValue =
             Object.entries(state.companyStructure || {}).forEach(([dept, foncs]) => {
                 if (Array.isArray(foncs) && foncs.includes(val)) foundDept = dept;
             });
-            deptInput.value = foundDept || (val ? "Général" : "");
+            const matchedRole = sortedRoles.find(r => r.name === val);
+            deptInput.value = foundDept || (matchedRole && matchedRole.dept) || (val ? "Général" : "");
         }
     };
     updateDept();
+    roleInput.removeEventListener("input", roleInput._deptUpdater);
     roleInput._deptUpdater = updateDept;
+    roleInput.addEventListener("input", updateDept);
 }
 
 function renderStructureConfigModal() {
@@ -234,6 +207,8 @@ function renderStructureConfigModal() {
     const selectedDeptLabel = document.getElementById("selected-dept-label");
     
     if (!deptListContainer) return;
+    
+    if (Array.isArray(state.companyStructure)) state.companyStructure = {};
     
     // Rendu des départements
     deptListContainer.innerHTML = "";
@@ -644,7 +619,7 @@ function loadStateFromLocalStorage() {
             state.dayDetails = data.dayDetails || {};
             state.rattrapages = data.rattrapages || {};
             state.absencePeriods = data.absencePeriods || {};
-            state.companyStructure = data.companyStructure || {};
+            state.companyStructure = (data.companyStructure && !Array.isArray(data.companyStructure)) ? data.companyStructure : {};
             state.users = data.users || [];
             state.closedMonths = data.closedMonths || [];
             state.absenceAlerts = data.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
@@ -670,7 +645,7 @@ function loadStateFromLocalStorage() {
                     state.dayDetails = oldState.dayDetails || {};
                     state.rattrapages = oldState.rattrapages || {};
                     state.absencePeriods = oldState.absencePeriods || {};
-                    state.companyStructure = oldState.companyStructure || {};
+                    state.companyStructure = (oldState.companyStructure && !Array.isArray(oldState.companyStructure)) ? oldState.companyStructure : {};
                     state.users = oldState.users || [];
                     state.closedMonths = oldState.closedMonths || [];
                     state.absenceAlerts = oldState.absenceAlerts || { warnMin: 3, warnMax: 4, adviseMin: 5, adviseMax: 6, releaseMin: 7 };
@@ -1293,7 +1268,6 @@ function setupEventListeners() {
     addBtn.addEventListener("click", () => {
         populateEmployeeFormSelects("", "", "add");
         modal.classList.add("active");
-        // Pr\u00e9remplir le transport par d\u00e9faut \u00e0 30 000 FCFA
         const transportInput = document.getElementById("employee-transport-input");
         if (transportInput && !transportInput.value) {
             transportInput.value = "30000";
@@ -1643,7 +1617,7 @@ function setupEventListeners() {
         addDeptBtn.addEventListener("click", () => {
             const name = newDeptInput.value.trim();
             if (!name) return;
-            if (!state.companyStructure) state.companyStructure = {};
+            if (!state.companyStructure || Array.isArray(state.companyStructure)) state.companyStructure = {};
             if (state.companyStructure[name]) {
                 alert("Ce département existe déjà.");
                 return;
@@ -1663,6 +1637,7 @@ function setupEventListeners() {
         addFuncBtn.addEventListener("click", () => {
             const name = newFuncInput.value.trim();
             if (!name || !selectedDeptConfig) return;
+            if (!Array.isArray(state.companyStructure[selectedDeptConfig])) state.companyStructure[selectedDeptConfig] = [];
             if (state.companyStructure[selectedDeptConfig].includes(name)) {
                 alert("Cette fonction existe déjà dans ce département.");
                 return;
@@ -1696,14 +1671,16 @@ function setupEventListeners() {
     const bulkFoncSelect = document.getElementById("bulk-employee-role-input");
     if (confirmBulkAssignBtn && bulkAssignModal) {
         confirmBulkAssignBtn.addEventListener("click", () => {
-            const selectedRole = bulkFoncSelect.value;
+            const selectedRole = bulkFoncSelect.value.trim();
             if (!selectedRole) {
                 alert("Veuillez sélectionner une fonction.");
                 return;
             }
 
-            const selectedOpt = bulkFoncSelect.options[bulkFoncSelect.selectedIndex];
-            const resolvedDept = selectedOpt ? (selectedOpt.getAttribute("data-dept") || "Non Défini") : "Non Défini";
+            let resolvedDept = "Non Défini";
+            Object.entries(state.companyStructure || {}).forEach(([dept, foncs]) => {
+                if (Array.isArray(foncs) && foncs.includes(selectedRole)) resolvedDept = dept;
+            });
 
             const selectedIds = Array.from(document.querySelectorAll(".emp-select-cb:checked")).map(cb => cb.value);
             
