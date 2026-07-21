@@ -337,6 +337,27 @@ function renderStructureConfigModal() {
                 nameSpan.style.flex = "1";
                 row.appendChild(nameSpan);
 
+                // Pin to Pointage checkbox
+                const isPinned = pointagePinnedRoles.includes(f);
+                const pinCb = document.createElement("input");
+                pinCb.type = "checkbox";
+                pinCb.className = "func-pin-cb";
+                pinCb.style.marginRight = "6px";
+                pinCb.title = "Épingler à l'onglet Pointage";
+                pinCb.checked = isPinned;
+                pinCb.addEventListener("change", () => {
+                    const idx = pointagePinnedRoles.indexOf(f);
+                    if (pinCb.checked) {
+                        if (idx < 0) pointagePinnedRoles.push(f);
+                    } else {
+                        if (idx >= 0) pointagePinnedRoles.splice(idx, 1);
+                    }
+                    savePinnedRoles();
+                    renderPointageFonctionsBar();
+                    renderPointageEmpBar();
+                });
+                row.appendChild(pinCb);
+
                 const actionsDiv = document.createElement("div");
                 actionsDiv.style.display = "flex";
                 actionsDiv.style.alignItems = "center";
@@ -370,6 +391,13 @@ function renderStructureConfigModal() {
                             }
                         });
 
+                        // Mettre à jour les rôles épinglées
+                        const pinIdx = pointagePinnedRoles.indexOf(f);
+                        if (pinIdx >= 0) {
+                            pointagePinnedRoles[pinIdx] = trimmedName;
+                            savePinnedRoles();
+                        }
+
                         saveStateToLocalStorage();
                         renderStructureConfigModal();
                         generateRecapTable();
@@ -390,9 +418,17 @@ function renderStructureConfigModal() {
                 delBtn.addEventListener("click", () => {
                     if (confirm(`Voulez-vous supprimer la fonction "${f}" ?`)) {
                         state.companyStructure[selectedDeptConfig] = state.companyStructure[selectedDeptConfig].filter(x => x !== f);
+                        // Retirer des rôles épinglées
+                        const pinIdx = pointagePinnedRoles.indexOf(f);
+                        if (pinIdx >= 0) {
+                            pointagePinnedRoles.splice(pinIdx, 1);
+                            savePinnedRoles();
+                        }
                         saveStateToLocalStorage();
                         renderStructureConfigModal();
                         generateRecapTable();
+                        renderPointageFonctionsBar();
+                        renderPointageEmpBar();
                     }
                 });
                 actionsDiv.appendChild(delBtn);
@@ -469,7 +505,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Erreur setupEventListeners:", err);
     }
     
-    // Firebase se chargera dans loadStateFromLocalStorage et appellera refreshAllViews
+    // Firebase sechargera dans loadStateFromLocalStorage et appellera refreshAllViews
     try {
         loadStateFromLocalStorage();
     } catch(err) {
@@ -482,7 +518,10 @@ document.addEventListener("DOMContentLoaded", () => {
         clearTimeout(loginFailsafe);
     }
     
-    // Initialise les icônes Lucide
+    // Mettre a jour le compteur d'employes actifs
+    updateHeaderActiveCount();
+    
+    // Initialise les icones Lucide
     lucide.createIcons();
 });
 
@@ -1161,6 +1200,7 @@ function setupEventListeners() {
         if (inactMonthSel) inactMonthSel.value = state.currentMonth;
         
         refreshAllViews();
+        updateHeaderActiveCount();
     });
     
     document.getElementById("year-selector").addEventListener("change", (e) => {
@@ -1183,6 +1223,7 @@ function setupEventListeners() {
         if (inactYearSel) inactYearSel.value = state.currentYear;
         
         refreshAllViews();
+        updateHeaderActiveCount();
     });
     
     // Onglets (Tabs)
@@ -1687,8 +1728,21 @@ function setupEventListeners() {
             }
             state.companyStructure[selectedDeptConfig].push(name);
             newFuncInput.value = "";
+            
+            // Vérifier si on doit l'épingler à l'onglet Pointage
+            const pinCb = document.getElementById("new-func-pin-pointage");
+            if (pinCb && pinCb.checked) {
+                if (!pointagePinnedRoles.includes(name)) {
+                    pointagePinnedRoles.push(name);
+                    savePinnedRoles();
+                }
+            }
+            if (pinCb) pinCb.checked = false;
+            
             saveStateToLocalStorage();
             renderStructureConfigModal();
+            renderPointageFonctionsBar();
+            renderPointageEmpBar();
         });
     }
 
@@ -1771,6 +1825,7 @@ function setupEventListeners() {
                 role: role || "Employé",
                 departement: departement || "Non Défini",
                 isRendement: document.getElementById("employee-rendement-cb").checked,
+                hasDefaultSchedule: document.getElementById("employee-default-schedule-cb").checked,
                 tauxTransport: tauxTransportVal ? parseFloat(tauxTransportVal) : 30000,
                 startDate: startDateVal || null
             };
@@ -1811,6 +1866,7 @@ function setupEventListeners() {
                 state.employees[empIndex].role = role || "Employé";
                 state.employees[empIndex].departement = departement || "Non Défini";
                 state.employees[empIndex].isRendement = document.getElementById("edit-employee-rendement-cb").checked;
+                state.employees[empIndex].hasDefaultSchedule = document.getElementById("edit-employee-default-schedule-cb").checked;
                 const editTauxVal = document.getElementById("edit-employee-transport-input").value.trim();
                 state.employees[empIndex].tauxTransport = editTauxVal ? parseFloat(editTauxVal) : 0;
                 state.employees[empIndex].startDate = document.getElementById("edit-employee-start-date-input").value || null;
@@ -1948,19 +2004,16 @@ function renderEmployeeList() {
             li.style.opacity = "0.6";
         }
         
-        const typeBadge = emp.isRendement
-            ? '<span style="display:inline-flex;align-items:center;gap:3px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:700;margin-left:6px;vertical-align:middle;"><i data-lucide="zap" style="width:11px;height:11px;"></i>Rendement</span>'
-            : '<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg-input);color:var(--text-muted);font-size:0.7rem;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:6px;vertical-align:middle;border:1px solid var(--border-color);">Horaire</span>';
         li.innerHTML = `
             <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
                 <input type="checkbox" class="emp-select-cb" value="${emp.id}" style="cursor: pointer;">
                 <div class="employee-item-info" style="flex:1; min-width:0;">
-                    <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
-                        <span class="employee-matricule">${emp.matricule || '—'}${!isActive ? ' <span style="color:var(--accent-danger);font-size:0.7rem;font-weight:600;">(Inactif)</span>' : ''}</span>
-                        ${typeBadge}
-                    </div>
+                    <span class="employee-matricule">${emp.matricule || '—'}${!isActive ? ' <span style="color:var(--accent-danger);font-size:0.7rem;font-weight:600;">(Inactif)</span>' : ''}</span>
                     <strong>${emp.name}</strong>
                     <span class="employee-role">${emp.role}</span>
+                </div>
+                <div style="flex-shrink:0; text-align:center; min-width:90px; padding:4px 10px; border-radius:8px; font-size:0.75rem; font-weight:700; ${emp.isRendement ? 'background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;' : 'background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-muted);'}">
+                    ${emp.isRendement ? '<i data-lucide="zap" style="width:11px;height:11px;vertical-align:-2px;"></i> RENDEMENT' : 'HORAIRE'}
                 </div>
             </div>
             <div style="display: flex; gap: 4px; flex-shrink: 0;">
@@ -2033,6 +2086,7 @@ function openEditModal(emp) {
     document.getElementById("edit-employee-name-input").value = emp.name || "";
     populateEmployeeFormSelects(emp.departement || "", emp.role || "", "edit");
     document.getElementById("edit-employee-rendement-cb").checked = emp.isRendement || false;
+    document.getElementById("edit-employee-default-schedule-cb").checked = emp.hasDefaultSchedule || false;
     document.getElementById("edit-employee-transport-input").value = emp.tauxTransport > 0 ? emp.tauxTransport : "";
     document.getElementById("edit-employee-start-date-input").value = emp.startDate || "";
     
@@ -2267,6 +2321,9 @@ function generateTable() {
     const bulkDefaultBtn = document.getElementById("bulk-default-pointing-btn");
     if (bulkDefaultBtn) bulkDefaultBtn.style.display = isMonthClosed ? "none" : "flex";
     
+    const stdPointingBtn = document.getElementById("open-standard-pointing-btn");
+    if (stdPointingBtn) stdPointingBtn.style.display = isMonthClosed ? "none" : "flex";
+    
     const daysCount = getDaysInMonth(state.currentYear, state.currentMonth);
     const empPointage = state.pointages[state.activeEmployeeId] || {};
     const empDetails = state.dayDetails[state.activeEmployeeId] || {};
@@ -2373,7 +2430,7 @@ function generateTable() {
         tr.className = `${weekendClass} ${holidayClass} ${nightActiveClass}`;
         tr.setAttribute("data-date", dateKey);
         
-        let dayLabel = `<strong>${dayStr}</strong> <span style="font-size:0.75rem; text-transform: capitalize; color: var(--text-muted);">${dayName}</span>`;
+        let dayLabel = `<strong>${dayStr}/${monthStr}</strong>`;
         if (isHoliday) {
             dayLabel += `<div style="font-size:0.65rem; color:#dc2626; font-weight:600; margin-top:2px;">${holidays[dateKey]}</div>`;
         }
@@ -2407,63 +2464,56 @@ function generateTable() {
         const lockRowStyleForNonAdmin = rowHasPointage && !isAdmin ? 'background-color: #f1f5f9; cursor: not-allowed;' : readonlyStyle;
         
         tr.innerHTML = `
-            <td class="col-day">${dayLabel}</td>
+            <td class="col-day" data-col-group="col-jour">${dayLabel}</td>
             
-            <!-- Statut de Présence -->
-            <td class="status-cell">
+            <td class="status-cell" data-col-group="col-statut">
                 <select class="status-select" data-field="status" style="width: 100%; font-size: 0.75rem; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-input);" ${lockRowForNonAdmin}>
                     <option value="present" ${data.status === 'present' ? 'selected' : ''}>Présent</option>
                     <option value="absent" ${data.status === 'absent' ? 'selected' : ''}>Absent</option>
                     <option value="permission" ${data.status === 'permission' ? 'selected' : ''}>Permission</option>
                     <option value="permission_payee" ${data.status === 'permission_payee' ? 'selected' : ''}>Permission Payée</option>
                     <option value="faute_entreprise" ${data.status === 'faute_entreprise' ? 'selected' : ''}>Faute Entreprise</option>
-                    <option value="malade" ${data.status === 'malade' ? 'selected' : ''}>Malade</option>
+                    <option value="malade" ${data.status === 'malade' ? 'selected' : ''}>Maladie</option>
                     <option value="accident" ${data.status === 'accident' ? 'selected' : ''}>Accident T.</option>
                     <option value="conge" ${data.status === 'conge' ? 'selected' : ''}>Congé</option>
                     <option value="autre" ${data.status === 'autre' ? 'selected' : ''}>Autre</option>
                 </select>
             </td>
             
-            <!-- Rendement active checkbox -->
-            <td class="col-rendement-cell" style="text-align: center; vertical-align: middle;">
+            <td class="col-rendement-cell" data-col-group="col-rendement" style="text-align: center; vertical-align: middle;">
                 <label class="rendement-toggle" style="margin: 0 auto; display: flex; align-items: center; justify-content: center;">
                     <input type="checkbox" class="rendement-active-cb" data-field="rendementActive" ${data.rendementActive ? 'checked' : ''} ${lockRowForNonAdmin} style="cursor: pointer; width: 16px; height: 16px;">
                 </label>
             </td>
             
-            <!-- Shift Jour -->
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)} ${data.status === 'present' && (!data.arrivee || data.arrivee.trim() === '') ? 'border: 2px solid #ef4444; background-color: #fee2e2;' : ''}"></td>
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="pause" value="${data.pause || ''}" placeholder="12:00" ${getFieldDisabled(data.pause)} style="${getFieldStyle(data.pause)}"></td>
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="reprise" value="${data.reprise || ''}" placeholder="13:00" ${getFieldDisabled(data.reprise)} style="${getFieldStyle(data.reprise)}"></td>
-            <td class="day-cell"><input type="text" class="time-input t-jour" data-field="fin" value="${data.fin || ''}" placeholder="17:00" ${getFieldDisabled(data.fin)} style="${getFieldStyle(data.fin)}"></td>
+            <td class="day-cell" data-col-group="col-shift-jour"><input type="text" class="time-input t-jour" data-field="arrivee" value="${data.arrivee || ''}" placeholder="08:00" ${getFieldDisabled(data.arrivee)} style="${getFieldStyle(data.arrivee)} ${data.status === 'present' && (!data.arrivee || data.arrivee.trim() === '') ? 'border: 2px solid #ef4444; background-color: #fee2e2;' : ''}"></td>
+            <td class="day-cell" data-col-group="col-shift-jour"><input type="text" class="time-input t-jour" data-field="pause" value="${data.pause || ''}" placeholder="12:00" ${getFieldDisabled(data.pause)} style="${getFieldStyle(data.pause)}"></td>
+            <td class="day-cell" data-col-group="col-shift-jour"><input type="text" class="time-input t-jour" data-field="reprise" value="${data.reprise || ''}" placeholder="13:00" ${getFieldDisabled(data.reprise)} style="${getFieldStyle(data.reprise)}"></td>
+            <td class="day-cell" data-col-group="col-shift-jour"><input type="text" class="time-input t-jour" data-field="fin" value="${data.fin || ''}" placeholder="17:00" ${getFieldDisabled(data.fin)} style="${getFieldStyle(data.fin)}"></td>
             
-            <!-- Night Toggle -->
-            <td class="col-toggle" style="text-align: center; vertical-align: middle;">
+            <td class="col-toggle" data-col-group="col-shift-nuit" style="text-align: center; vertical-align: middle;">
                 <label class="night-toggle" style="margin: 0 auto;">
                     <input type="checkbox" class="nuit-active-cb" data-field="nuitActive" ${data.nuitActive ? 'checked' : ''} ${disabledAttr}>
                     <span class="slider" style="border-radius: 20px;"></span>
                 </label>
             </td>
             
-            <!-- Shift Nuit -->
-            <td class="night-cell"><input type="text" class="time-input t-nuit" data-field="nuitDebut" value="${data.nuitDebut || ''}" placeholder="21:00" ${getFieldDisabled(data.nuitDebut)} style="${getFieldStyle(data.nuitDebut)}"></td>
-            <td class="night-cell"><input type="text" class="time-input t-nuit" data-field="nuitPause" value="${data.nuitPause || ''}" placeholder="00:00" ${getFieldDisabled(data.nuitPause)} style="${getFieldStyle(data.nuitPause)}"></td>
-            <td class="night-cell"><input type="text" class="time-input t-nuit" data-field="nuitReprise" value="${data.nuitReprise || ''}" placeholder="01:00" ${getFieldDisabled(data.nuitReprise)} style="${getFieldStyle(data.nuitReprise)}"></td>
-            <td class="night-cell"><input type="text" class="time-input t-nuit" data-field="nuitFin" value="${data.nuitFin || ''}" placeholder="05:00" ${getFieldDisabled(data.nuitFin)} style="${getFieldStyle(data.nuitFin)}"></td>
+            <td class="night-cell" data-col-group="col-shift-nuit"><input type="text" class="time-input t-nuit" data-field="nuitDebut" value="${data.nuitDebut || ''}" placeholder="21:00" ${getFieldDisabled(data.nuitDebut)} style="${getFieldStyle(data.nuitDebut)}"></td>
+            <td class="night-cell" data-col-group="col-shift-nuit"><input type="text" class="time-input t-nuit" data-field="nuitPause" value="${data.nuitPause || ''}" placeholder="00:00" ${getFieldDisabled(data.nuitPause)} style="${getFieldStyle(data.nuitPause)}"></td>
+            <td class="night-cell" data-col-group="col-shift-nuit"><input type="text" class="time-input t-nuit" data-field="nuitReprise" value="${data.nuitReprise || ''}" placeholder="01:00" ${getFieldDisabled(data.nuitReprise)} style="${getFieldStyle(data.nuitReprise)}"></td>
+            <td class="night-cell" data-col-group="col-shift-nuit"><input type="text" class="time-input t-nuit" data-field="nuitFin" value="${data.nuitFin || ''}" placeholder="05:00" ${getFieldDisabled(data.nuitFin)} style="${getFieldStyle(data.nuitFin)}"></td>
             
-            <!-- Observations (Direct Input) -->
-            <td class="notes-cell" style="padding: 4px;">
+            <td class="notes-cell" data-col-group="col-obs" style="padding: 4px;">
                 <input type="text" class="obs-input" data-field="observation" value="${data.observation || ''}" placeholder="Ex: Retard..." ${getFieldDisabled(data.observation)} style="width: 100%; min-width: 120px; font-size: 0.8rem; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-family: inherit; ${getFieldStyle(data.observation)}">
             </td>
             
-            <!-- Totaux -->
-            ${(empRdt && empRdt.isRendement && data.arrivee && data.fin) ?
-                `<td class="total-cell val-total-jour" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a; letter-spacing:0.5px;">RENDEMENT</td>
-                 <td class="total-cell val-total-nuit" style="text-align:center; color:#9ca3af;">—</td>
-                 <td class="total-cell highlight-col val-total-global" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT</td>` :
-                `<td class="total-cell val-total-jour">${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span></td>
-                <td class="total-cell val-total-nuit">${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span></td>
-                <td class="total-cell highlight-col val-total-global">${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span></td>`
+            ${(empRdt && empRdt.isRendement && (data.arrivee || data.status === "present")) ?
+                `<td class="total-cell val-total-jour" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;">${getRendementDaysCount(state.activeEmployeeId)} jour(s)</td>
+                 <td class="total-cell val-total-nuit" data-col-group="col-totaux" style="text-align:center; color:#9ca3af;">—</td>
+                 <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">${getRendementDaysCount(state.activeEmployeeId)} jour(s)</td>` :
+                `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
+                <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
+                <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux">${minutesToHoursStr(totalMinutes)}</td>`
             }
         `;
         
@@ -2662,10 +2712,10 @@ function generateTable() {
 
     // Update NEW synthesis KPI elements
     const elSynthTotalPaid = document.getElementById("synth-total-paid");
-    if (elSynthTotalPaid) elSynthTotalPaid.innerHTML = `${minutesToHoursStr(totalHoursMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalHoursMin)}</span>`;
+    if (elSynthTotalPaid) elSynthTotalPaid.innerHTML = `${minutesToHoursStr(totalHoursMin)}`;
     
     const elSynthTotalNight = document.getElementById("synth-total-night");
-    if (elSynthTotalNight) elSynthTotalNight.innerHTML = `${minutesToHoursStr(totalNuitMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalNuitMin)}</span>`;
+    if (elSynthTotalNight) elSynthTotalNight.innerHTML = `${minutesToHoursStr(totalNuitMin)}`;
     
     const elSynthToRecover = document.getElementById("synth-to-recover");
     if (elSynthToRecover) elSynthToRecover.innerHTML = `${minutesToHoursStr(remainingDebtMins)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(remainingDebtMins)}</span>`;
@@ -2699,9 +2749,9 @@ function generateTable() {
         synthFooter.innerHTML = `
             <tr style="background: #f0fdf4; border-top: 2px solid #10b981; font-weight: 700; font-size: 0.9rem;">
                 <td colspan="2" style="padding: 14px 16px; text-align: left; color: #059669;">📊 TOTAUX DU MOIS (${workedDaysCount} jour${workedDaysCount > 1 ? 's' : ''} / ${totalWorkingDaysInMonth} ouvrables)</td>
-                <td style="padding: 14px 16px; text-align: center; color: var(--accent-day);">${minutesToHoursStr(totalJourMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalJourMin)}</span></td>
-                <td style="padding: 14px 16px; text-align: center; color: var(--accent-night);">${minutesToHoursStr(totalNuitMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalNuitMin)}</span></td>
-                <td style="padding: 14px 16px; text-align: center; color: #059669; font-size: 1rem;">${minutesToHoursStr(totalHoursMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalHoursMin)}</span></td>
+                <td style="padding: 14px 16px; text-align: center; color: var(--accent-day);">${minutesToHoursStr(totalJourMin)}</td>
+                <td style="padding: 14px 16px; text-align: center; color: var(--accent-night);">${minutesToHoursStr(totalNuitMin)}</td>
+                <td style="padding: 14px 16px; text-align: center; color: #059669; font-size: 1rem;">${minutesToHoursStr(totalHoursMin)}</td>
             </tr>
         `;
     }
@@ -2719,24 +2769,35 @@ function updateSummaryKPIs(dayMin, nightMin, workedDays, totalMin, totalWorkingD
     
     const finalTotalMin = Math.max(0, totalMin - totalRattrapageMins);
 
-    document.getElementById("kpi-day-hours").innerHTML = `${minutesToHoursStr(dayMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(dayMin)}</span>`;
-    document.getElementById("kpi-night-hours").innerHTML = `${minutesToHoursStr(nightMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(nightMin)}</span>`;
-    document.getElementById("kpi-days-worked").textContent = `${workedDays} jour${workedDays > 1 ? 's' : ''}`;
-    
-    let totalHtml = `${minutesToHoursStr(finalTotalMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(finalTotalMin)}</span>`;
-    if (totalRattrapageMins > 0) {
-        totalHtml += `<div style="font-size:0.7rem; color:var(--accent-warning); margin-top:4px;">(Déduit : ${minutesToHoursStr(totalRattrapageMins)} de rattrapage)</div>`;
+    const activeEmp = state.employees.find(e => e.id === state.activeEmployeeId);
+    const isRdt = activeEmp && activeEmp.isRendement;
+    const rdtDays = isRdt ? getRendementDaysCount(state.activeEmployeeId) : 0;
+
+    if (isRdt) {
+        document.getElementById("kpi-day-hours").innerHTML = `<span style="color:#b45309; font-weight:800; background:#fffbeb; padding:2px 8px; border-radius:6px; border:1px solid #fde68a; font-size:0.85rem;">RENDEMENT</span>`;
+        document.getElementById("kpi-night-hours").innerHTML = `<span style="color:var(--text-muted);">—</span>`;
+        document.getElementById("kpi-days-worked").innerHTML = `<span style="color:#b45309; font-weight:800; font-size:1.1rem;">${rdtDays}j</span> <span style="font-size:0.7rem; color:var(--text-muted);">/ ${totalWorkingDays}j</span>`;
+        document.getElementById("kpi-total-hours").innerHTML = `<span style="color:#b45309; font-weight:800; font-size:1.1rem;">${rdtDays} jours</span>`;
+    } else {
+        document.getElementById("kpi-day-hours").innerHTML = `${minutesToHoursStr(dayMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(dayMin)}</span>`;
+        document.getElementById("kpi-night-hours").innerHTML = `${minutesToHoursStr(nightMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(nightMin)}</span>`;
+        document.getElementById("kpi-days-worked").textContent = `${workedDays}j`;
+        
+        let totalHtml = `${minutesToHoursStr(finalTotalMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(finalTotalMin)}</span>`;
+        if (totalRattrapageMins > 0) {
+            totalHtml += `<div style="font-size:0.7rem; color:var(--accent-warning); margin-top:4px;">(Déduit : ${minutesToHoursStr(totalRattrapageMins)} de rattrapage)</div>`;
+        }
+        document.getElementById("kpi-total-hours").innerHTML = totalHtml;
     }
-    document.getElementById("kpi-total-hours").innerHTML = totalHtml;
     
     // Calcul transport : taux mensuel base proratisé
     const kpiTransport = document.getElementById("kpi-transport");
     if (kpiTransport) {
-        const activeEmp = state.employees.find(e => e.id === state.activeEmployeeId);
         const taux = activeEmp && activeEmp.tauxTransport ? parseFloat(activeEmp.tauxTransport) : 0;
         if (taux > 0 && totalWorkingDays > 0) {
-            const totalTransport = (taux * workedDays) / totalWorkingDays;
-            kpiTransport.innerHTML = `<strong>${totalTransport.toLocaleString('fr-FR', {minimumFractionDigits:0, maximumFractionDigits:0})}</strong> <span class="kpi-decimal">(${workedDays}/${totalWorkingDays}j ouvrables)</span>`;
+            const transportDays = isRdt ? rdtDays : workedDays;
+            const totalTransport = (taux * transportDays) / totalWorkingDays;
+            kpiTransport.innerHTML = `<strong>${totalTransport.toLocaleString('fr-FR', {minimumFractionDigits:0, maximumFractionDigits:0})}</strong> <span style="font-size:0.65rem; color:var(--text-muted);">(${transportDays}/${totalWorkingDays}j)</span>`;
             const transportCard = document.getElementById("kpi-transport-card");
             if (transportCard) transportCard.style.display = "";
         } else {
@@ -3584,20 +3645,21 @@ function recalculateRow(trElement) {
     const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
     
     // Afficher les résultats sur la ligne
-    if (empRdt2 && empRdt2.isRendement && data.arrivee && data.fin) {
-        trElement.querySelector(".val-total-jour").innerHTML = `RENDEMENT`;
+    if (empRdt2 && empRdt2.isRendement && (data.arrivee || data.status === "present")) {
+        const rdtCount = getRendementDaysCount(state.activeEmployeeId);
+        trElement.querySelector(".val-total-jour").innerHTML = `${rdtCount} jour(s)`;
         trElement.querySelector(".val-total-jour").style.cssText = "text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;";
         trElement.querySelector(".val-total-nuit").innerHTML = `—`;
         trElement.querySelector(".val-total-nuit").style.cssText = "text-align:center; color:#9ca3af;";
-        trElement.querySelector(".val-total-global").innerHTML = `RENDEMENT`;
+        trElement.querySelector(".val-total-global").innerHTML = `${rdtCount} jour(s)`;
         trElement.querySelector(".val-total-global").style.cssText = "text-align:center; font-weight:800; color:#b45309; background:#fffbeb;";
     } else {
         trElement.querySelector(".val-total-jour").style.cssText = "";
         trElement.querySelector(".val-total-nuit").style.cssText = "";
         trElement.querySelector(".val-total-global").style.cssText = "";
-        trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>`;
-        trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>`;
-        trElement.querySelector(".val-total-global").innerHTML = `${minutesToHoursStr(totalMinutes)}<span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>`;
+        trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}`;
+        trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}`;
+        trElement.querySelector(".val-total-global").innerHTML = `${minutesToHoursStr(totalMinutes)}`;
     }
     
     recalculateEntireMonthKPIs();
@@ -3611,10 +3673,19 @@ function recalculateEntireMonthKPIs() {
     let totalNuitMin = 0;
     let totalHoursMin = 0;
     let workedDaysCount = 0;
+    let totalWorkingDaysInMonth = 0;
     
     rows.forEach(tr => {
         const dateKey = tr.getAttribute("data-date");
         if (!dateKey) return;
+        
+        const [y, m, d] = dateKey.split("-").map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const isHoliday = state.holidays && state.holidays[dateKey];
+        const isWorkingDay = !isWeekend && !isHoliday;
+        if (isWorkingDay) totalWorkingDaysInMonth++;
         
         const empPointage = state.pointages[state.activeEmployeeId] || {};
         const data = empPointage[dateKey];
@@ -3623,7 +3694,6 @@ function recalculateEntireMonthKPIs() {
         const empDetails = state.dayDetails[state.activeEmployeeId] || {};
         const detail = empDetails[dateKey] || { note: "", isEvent: false, eventName: "", eventWorked: true };
         
-        // Vérifier si ce jour tombe dans une période d'absence
         let periodPaid = null;
         let isDeclaredAbsenceDay = false;
         if (state.absencePeriods && state.absencePeriods[state.activeEmployeeId]) {
@@ -3647,13 +3717,12 @@ function recalculateEntireMonthKPIs() {
         totalJourMin += legalDayMinutes;
         totalNuitMin += legalNightMinutes;
         totalHoursMin += totalMinutes;
-        // Exclure les jours déclarés du compteur de jours travaillés
         if (!isDeclaredAbsenceDay && (totalMinutes > 0 || data.rendementActive === true)) {
             workedDaysCount++;
         }
     });
     
-    updateSummaryKPIs(totalJourMin, totalNuitMin, workedDaysCount, totalHoursMin);
+    updateSummaryKPIs(totalJourMin, totalNuitMin, workedDaysCount, totalHoursMin, totalWorkingDaysInMonth);
 }
 
 // ==========================================================================
@@ -5470,12 +5539,16 @@ function applyEditRestrictions() {
         document.querySelectorAll("#table-body .time-input").forEach(inp => { inp.readOnly = false; inp.style.opacity = "1"; });
         const groupBtn = document.getElementById("open-group-pointing-btn");
         if (groupBtn) groupBtn.style.display = "";
+        const stdBtn = document.getElementById("open-standard-pointing-btn");
+        if (stdBtn) stdBtn.style.display = "";
         const clearMonthBtn = document.getElementById("clear-month-btn");
         if (clearMonthBtn && state.currentUser && state.currentUser.role === "ADMIN") clearMonthBtn.style.display = "";
     } else {
         document.querySelectorAll("#table-body .time-input").forEach(inp => { inp.readOnly = true; inp.style.opacity = "0.5"; });
         const groupBtn = document.getElementById("open-group-pointing-btn");
         if (groupBtn) groupBtn.style.display = "none";
+        const stdBtn = document.getElementById("open-standard-pointing-btn");
+        if (stdBtn) stdBtn.style.display = "none";
         const clearMonthBtn = document.getElementById("clear-month-btn");
         if (clearMonthBtn) clearMonthBtn.style.display = "none";
     }
@@ -5595,11 +5668,22 @@ function getSortedEmployees() {
     });
 }
 
-let pointageSelectedRole = "all"; // "all" ou nom de fonction
+let pointagePinnedRoles = []; // fonctions épinglées (multi-select)
 let suiviSelectedDept = "all";
 let rapportSelectedDept = "all";
 
-// === FILTRE PAR FONCTION DANS LE POINTAGE ===
+function loadPinnedRoles() {
+    try {
+        const saved = JSON.parse(localStorage.getItem("pps_pinned_roles"));
+        if (Array.isArray(saved)) pointagePinnedRoles = saved;
+    } catch(e) {}
+}
+
+function savePinnedRoles() {
+    localStorage.setItem("pps_pinned_roles", JSON.stringify(pointagePinnedRoles));
+}
+
+// === FILTRE PAR FONCTION DANS LE POINTAGE (multi-épinglage) ===
 function renderPointageFonctionsBar() {
     const bar = document.getElementById("pointage-fonctions-bar");
     if (!bar) return;
@@ -5611,66 +5695,88 @@ function renderPointageFonctionsBar() {
             rolesSet.add((emp.role || "Non Défini").trim());
         }
     });
-
     const roles = Array.from(rolesSet).sort();
 
-    // Construire les boutons
-    const span = bar.querySelector("span");
-    // Supprimer les anciens boutons (garder le label)
-    Array.from(bar.children).forEach(el => {
-        if (el.tagName === "BUTTON") el.remove();
-    });
+    // Render the dropdown for selecting functions to pin
+    const dropdown = document.getElementById("pointage-func-selector-dropdown");
+    if (dropdown) {
+        dropdown.innerHTML = "";
+        roles.forEach(role => {
+            const isPinned = pointagePinnedRoles.includes(role);
+            const count = state.employees.filter(e => isEmployeeActive(e) && (e.role || "Non Défini").trim() === role).length;
+            const item = document.createElement("div");
+            item.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer; border-radius:6px; font-size:0.78rem; font-weight:500; transition:background 0.12s;";
+            item.innerHTML = `
+                <span style="width:16px; height:16px; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; border:1.5px solid ${isPinned ? 'var(--accent-day)' : '#d1d5db'}; background:${isPinned ? 'var(--accent-day)' : 'transparent'}; color:${isPinned ? '#fff' : 'transparent'};">${isPinned ? '✓' : ''}</span>
+                <span>${role}</span>
+                <span style="font-size:0.65rem; opacity:0.6; margin-left:auto;">(${count})</span>
+            `;
+            item.addEventListener("mouseenter", () => item.style.background = "var(--bg-input)");
+            item.addEventListener("mouseleave", () => item.style.background = "transparent");
+            item.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const idx = pointagePinnedRoles.indexOf(role);
+                if (idx >= 0) pointagePinnedRoles.splice(idx, 1);
+                else pointagePinnedRoles.push(role);
+                savePinnedRoles();
+                renderPointageFonctionsBar();
+                renderPointageEmpBar();
+            });
+            dropdown.appendChild(item);
+        });
+    }
 
-    // Bouton "Tous"
-    const allBtn = document.createElement("button");
-    allBtn.className = `btn btn-sm ${pointageSelectedRole === "all" ? "btn-primary" : "btn-secondary"}`;
-    allBtn.style.padding = "6px 14px";
-    allBtn.textContent = "Tous";
-    allBtn.onclick = () => {
-        pointageSelectedRole = "all";
-        renderPointageFonctionsBar();
-        // Sélectionner le premier employé visible
-        const sorted = getSortedEmployees().filter(e => isEmployeeActive(e));
-        if (sorted.length > 0) selectEmployee(sorted[0].id);
-    };
-    bar.appendChild(allBtn);
+    // Render the chips for pinned functions only
+    const chipsContainer = bar.querySelector("#pointage-func-chips");
+    if (chipsContainer) {
+        chipsContainer.innerHTML = "";
+        pointagePinnedRoles.forEach(role => {
+            const count = state.employees.filter(e => isEmployeeActive(e) && (e.role || "Non Défini").trim() === role).length;
+            const chip = document.createElement("button");
+            chip.className = "fonction-chip";
+            chip.style.cssText = `
+                display:inline-flex; align-items:center; gap:4px;
+                padding:4px 10px; border-radius:16px; font-size:0.72rem; font-weight:700;
+                cursor:pointer; white-space:nowrap;
+                border:1.5px solid var(--accent-day);
+                background:rgba(59,130,246,0.1); color:var(--accent-day);
+                transition: all 0.15s;
+            `;
+            chip.innerHTML = `
+                <span style="width:14px;height:14px;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:0.6rem;border:1.5px solid var(--accent-day);background:var(--accent-day);color:#fff;">✓</span>
+                ${role} <span style="font-size:0.6rem;opacity:0.6;">(${count})</span>
+                <i data-lucide="x" style="width:10px;height:10px;opacity:0.5;"></i>
+            `;
+            chip.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const idx = pointagePinnedRoles.indexOf(role);
+                if (idx >= 0) pointagePinnedRoles.splice(idx, 1);
+                savePinnedRoles();
+                renderPointageFonctionsBar();
+                renderPointageEmpBar();
+            });
+            chip.addEventListener("mouseenter", () => { chip.style.opacity = "0.8"; });
+            chip.addEventListener("mouseleave", () => { chip.style.opacity = "1"; });
+            chipsContainer.appendChild(chip);
+        });
+    }
 
-    roles.forEach(role => {
-        const btn = document.createElement("button");
-        btn.className = `btn btn-sm ${pointageSelectedRole === role ? "btn-primary" : "btn-secondary"}`;
-        btn.style.padding = "6px 14px";
-        btn.textContent = role;
-        btn.onclick = () => {
-            pointageSelectedRole = role;
-            renderPointageFonctionsBar();
-            // Sélectionner le premier employé de cette fonction, par ordre de matricule
-            const empsInRole = getSortedEmployees().filter(e => isEmployeeActive(e) && (e.role || "Non Défini").trim() === role);
-            if (empsInRole.length > 0) {
-                selectEmployee(empsInRole[0].id);
-                showPointageNavForRole(role, empsInRole);
-            }
-        };
-        bar.appendChild(btn);
-    });
-
-    if (window.lucide) lucide.createIcons();
+    if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 function showPointageNavForRole(role, emps) {
-    // Afficher un mini-navigateur sous la barre de fonctions pour changer d'employé
     let nav = document.getElementById("pointage-role-nav");
     if (!nav) {
         nav = document.createElement("div");
         nav.id = "pointage-role-nav";
         nav.style.cssText = "display:flex; gap:8px; flex-wrap:wrap; padding: 8px 24px 0; align-items:flex-start;";
-        // Insérer après le parent wrapper de la barre
         const bar = document.getElementById("pointage-fonctions-bar");
         const wrapper = bar.parentElement;
         wrapper.insertAdjacentElement("afterend", nav);
     }
     nav.innerHTML = `<span style="font-size:0.7rem;color:var(--text-muted);font-weight:600;margin-right:4px;align-self:center;">${role} (${emps.length}) :</span>`;
     emps.forEach(emp => {
-        const firstName = (emp.name || "").split(" ")[0]; // Premier mot du nom
+        const firstName = (emp.name || "").split(" ")[0];
         const btn = document.createElement("button");
         btn.className = `btn btn-sm ${emp.id === state.activeEmployeeId ? "btn-primary" : "btn-secondary"}`;
         btn.style.cssText = "padding:5px 10px; font-size:0.78rem; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:60px;";
@@ -5917,7 +6023,7 @@ function renderSuiviJournalier() {
             });
             const pct = Math.round((pointedCount / totalEmps) * 100);
             const dayAbbr = ["Di","Lu","Ma","Me","Je","Ve","Sa"][dayOfWeek];
-            const bg = `background:linear-gradient(to top, #10b981 0%, #10b981 ${pct}%, #ef4444 ${pct}%, #ef4444 100%); color:#fff;`;
+            const bg = `background:linear-gradient(to top, #10b981 0%, #10b981 ${pct}%, #d1d5db ${pct}%, #d1d5db 100%); color:#fff;`;
             indicatorHTML += `<span data-day="${d}" onclick="suiviJumpToDate(${d})" title="${dayAbbr} ${d} ${monthNames[month-1]} — ${pointedCount}/${filteredEmps.length} pointés (${pct}%)" style="display:inline-flex; flex-direction:column; align-items:center; min-width:22px; padding:2px 3px; border-radius:4px; font-size:0.6rem; line-height:1.1; cursor:pointer; ${bg}"><span style="font-weight:700;">${d}</span><span style="font-size:0.55rem; opacity:0.85;">${dayAbbr}</span></span>`;
         }
         weekIndicatorEl.innerHTML = indicatorHTML;
@@ -6049,11 +6155,23 @@ window.clearSuiviPresenceEmploye = function(empId, dateKey) {
         alert("Seuls les administrateurs peuvent supprimer un pointage.");
         return;
     }
+    const existingData = state.pointages[empId] && state.pointages[empId][dateKey];
+    const wasPresent = existingData && (existingData.status === "present");
     if (state.pointages[empId] && state.pointages[empId][dateKey]) {
         delete state.pointages[empId][dateKey];
     }
     if (state.dayDetails[empId] && state.dayDetails[empId][dateKey]) {
         delete state.dayDetails[empId][dateKey];
+    }
+    if (wasPresent) {
+        const emp = state.employees.find(e => e.id === empId);
+        if (emp && emp.isRendement) {
+            const parts = dateKey.split("-");
+            const rdtKey = `_rendement_days_${parseInt(parts[0])}_${parseInt(parts[1]) - 1}`;
+            if (state.pointages[empId] && state.pointages[empId][rdtKey] > 0) {
+                state.pointages[empId][rdtKey]--;
+            }
+        }
     }
     saveStateToLocalStorage();
     renderSuiviJournalier();
@@ -6072,13 +6190,21 @@ function markBulkPresence(isPresent) {
     }
     
     let updated = 0;
+    const parts = dateKey.split("-");
+    const year = parseInt(parts[0]);
+    const month = parseInt(parts[1]) - 1;
     checkboxes.forEach(cb => {
         const empId = cb.value;
         if (!state.pointages[empId]) state.pointages[empId] = {};
         if (!state.pointages[empId][dateKey]) state.pointages[empId][dateKey] = {};
         
+        const emp = state.employees.find(e => e.id === empId);
+        const isRdt = emp && emp.isRendement;
+        const rdtKey = `_rendement_days_${year}_${month}`;
+        
         if (isPresent) {
             state.pointages[empId][dateKey].status = "present";
+            if (isRdt) state.pointages[empId][rdtKey] = (state.pointages[empId][rdtKey] || 0) + 1;
         } else {
             state.pointages[empId][dateKey].status = "absent";
             state.pointages[empId][dateKey].arrivee = "";
@@ -6086,6 +6212,9 @@ function markBulkPresence(isPresent) {
             state.pointages[empId][dateKey].reprise = "";
             state.pointages[empId][dateKey].fin = "";
             state.pointages[empId][dateKey].nuitActive = false;
+            if (isRdt && state.pointages[empId][rdtKey] > 0) {
+                state.pointages[empId][rdtKey] = (state.pointages[empId][rdtKey] || 1) - 1;
+            }
         }
         updated++;
     });
@@ -6116,8 +6245,18 @@ function setSuiviPresence(empId, dateKey, status) {
     if (!state.pointages[empId]) state.pointages[empId] = {};
     if (!state.pointages[empId][dateKey]) state.pointages[empId][dateKey] = {};
     
+    const emp = state.employees.find(e => e.id === empId);
+    const isRendement = emp && emp.isRendement;
+    
     if (status === "present") {
         state.pointages[empId][dateKey].status = "present";
+        if (isRendement) {
+            const parts = dateKey.split("-");
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const rdtKey = `_rendement_days_${year}_${month}`;
+            state.pointages[empId][rdtKey] = (state.pointages[empId][rdtKey] || 0) + 1;
+        }
     } else {
         state.pointages[empId][dateKey].status = "absent";
         state.pointages[empId][dateKey].arrivee = "";
@@ -6125,6 +6264,15 @@ function setSuiviPresence(empId, dateKey, status) {
         state.pointages[empId][dateKey].reprise = "";
         state.pointages[empId][dateKey].fin = "";
         state.pointages[empId][dateKey].nuitActive = false;
+        if (isRendement) {
+            const parts = dateKey.split("-");
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const rdtKey = `_rendement_days_${year}_${month}`;
+            if (state.pointages[empId][rdtKey] > 0) {
+                state.pointages[empId][rdtKey] = (state.pointages[empId][rdtKey] || 1) - 1;
+            }
+        }
     }
     
     saveStateToLocalStorage();
@@ -6416,7 +6564,14 @@ function renderParamsTable() {
     const summaryContainer = document.getElementById("params-dept-summary");
     const deptFilterSelect = document.getElementById("params-dept-filter");
     if (!tbody || !summaryContainer || !deptFilterSelect) return;
-    
+
+    // Compter les employés actifs pour le mois courant
+    const activeCount = state.employees.filter(e => isEmployeeActive(e)).length;
+    const totalCount = state.employees.length;
+    const countEl = document.getElementById("params-active-count");
+    if (countEl) countEl.textContent = `${activeCount} actif(s) / ${totalCount} total`;
+    updateHeaderActiveCount();
+
     const searchInput = document.getElementById("params-search");
     const searchVal = searchInput ? searchInput.value.toLowerCase() : "";
     
@@ -6472,9 +6627,16 @@ function renderParamsTable() {
             : `<span class="badge" style="background:#dcfce7;color:#16a34a;border-color:#bbf7d0">Actif</span>`;
             
         tr.innerHTML = `
-            <td><strong>${emp.matricule || '-'}</strong></td>
-            <td>${emp.name}</td>
+            <td><strong>${emp.name}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${emp.matricule || '-'}</span></td>
             <td>${emp.role || 'Non Défini'}</td>
+            <td style="text-align:center;">
+                ${emp.isRendement 
+                    ? '<span class="badge" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border-color:#fcd34d;font-weight:600;">RENDEMENT</span>'
+                    : (emp.hasDefaultSchedule 
+                        ? '<span class="badge" style="background:rgba(59,130,246,0.1);color:var(--accent-day);border-color:rgba(59,130,246,0.3);font-weight:600;">STANDARD</span>'
+                        : '<span class="badge" style="background:var(--bg-input);color:var(--text-muted);border-color:var(--border-color);font-weight:600;">HORAIRE</span>')
+                }
+            </td>
             <td><span class="badge" style="background:var(--bg-input);color:var(--text-secondary)">${empDept}</span></td>
             <td>${emp.startDate ? new Date(emp.startDate).toLocaleDateString('fr-FR') : 'N/A'}</td>
             <td>${transportVal.toLocaleString('fr-FR')} F</td>
@@ -6678,9 +6840,15 @@ window.clearSuiviPresenceCeJour = function() {
     }
 
     let updated = 0;
+    const parts = dateVal.split("-");
+    const rdtKey = `_rendement_days_${parseInt(parts[0])}_${parseInt(parts[1]) - 1}`;
     state.employees.forEach(emp => {
         if (state.pointages[emp.id] && state.pointages[emp.id][dateVal]) {
+            const wasPresent = state.pointages[emp.id][dateVal].status === "present";
             delete state.pointages[emp.id][dateVal];
+            if (wasPresent && emp.isRendement && state.pointages[emp.id] && state.pointages[emp.id][rdtKey] > 0) {
+                state.pointages[emp.id][rdtKey]--;
+            }
             updated++;
         }
         if (state.dayDetails[emp.id] && state.dayDetails[emp.id][dateVal]) {
@@ -6864,18 +7032,41 @@ function renderMiniCalendar() {
     if (!container) return;
     const daysCount = getDaysInMonth(state.currentYear, state.currentMonth);
     const monthNames = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+    const activeEmps = state.employees.filter(e => isEmployeeActiveAtDate(e, state.currentYear, state.currentMonth));
+    const totalEmps = activeEmps.length || 1;
     let html = `<i data-lucide="calendar" style="width:14px; height:14px; color:var(--text-muted); margin-right:4px;"></i>`;
     html += `<span style="font-size:0.7rem; color:var(--text-muted); font-weight:700; margin-right:6px; white-space:nowrap;">${monthNames[state.currentMonth]} ${state.currentYear} :</span>`;
     for (let d = 1; d <= daysCount; d++) {
         const dayStr = String(d).padStart(2, "0");
         const monthStr = String(state.currentMonth + 1).padStart(2, "0");
         const dateKey = state.currentYear + "-" + monthStr + "-" + dayStr;
-        const hasData = state.pointages[state.activeEmployeeId] && state.pointages[state.activeEmployeeId][dateKey];
+        let pointedCount = 0;
+        activeEmps.forEach(emp => {
+            const pd = state.pointages[emp.id] && state.pointages[emp.id][dateKey];
+            if (pd && (pd.status === "present" || pd.arrivee)) pointedCount++;
+        });
+        const pct = Math.round((pointedCount / totalEmps) * 100);
         const isToday = (new Date()).getDate() === d && (new Date()).getMonth() === state.currentMonth && (new Date()).getFullYear() === state.currentYear;
-        let btnStyle = "width:24px; height:24px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:0.65rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;";
-        if (isToday) btnStyle += "background:var(--accent-primary); color:#fff; border-color:var(--accent-primary); font-weight:800;";
-        else if (hasData) btnStyle += "background:#dcfce7; color:#166534; border-color:#86efac;";
-        html += `<button class="mini-cal-day" data-day="${d}" style="${btnStyle}" title="${dayStr}/${monthStr}">${d}</button>`;
+        let btnBg, btnColor, btnBorder;
+        if (isToday) {
+            btnBg = "var(--accent-primary)";
+            btnColor = "#fff";
+            btnBorder = "var(--accent-primary)";
+        } else if (pct === 100) {
+            btnBg = "#10b981";
+            btnColor = "#fff";
+            btnBorder = "#059669";
+        } else if (pct > 0) {
+            btnBg = `linear-gradient(to top, #10b981 ${pct}%, #d1d5db ${pct}%)`;
+            btnColor = pct >= 50 ? "#fff" : "#1f2937";
+            btnBorder = "#d1d5db";
+        } else {
+            btnBg = "var(--bg-input)";
+            btnColor = "var(--text-primary)";
+            btnBorder = "var(--border-color)";
+        }
+        const btnStyle = `width:24px; height:24px; border-radius:6px; border:1px solid ${btnBorder}; background:${btnBg}; color:${btnColor}; font-size:0.65rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.15s;`;
+        html += `<button class="mini-cal-day" data-day="${d}" style="${btnStyle}" title="${dayStr}/${monthStr} — ${pointedCount}/${totalEmps} pointés (${pct}%)">${d}</button>`;
     }
     container.innerHTML = html;
     container.querySelectorAll(".mini-cal-day").forEach(btn => {
@@ -6908,3 +7099,520 @@ refreshAllViews = function() {
     _origRefreshAllViews();
     renderMiniCalendar();
 };
+
+// ==========================================================================
+// POINTAGE RENDEMENT (EN JOURS)
+// ==========================================================================
+const rendementModal = document.getElementById("rendement-pointing-modal");
+const openRendementBtn = document.getElementById("open-rendement-pointing-btn");
+
+if (openRendementBtn) {
+    openRendementBtn.addEventListener("click", () => {
+        if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+            alert("Seuls les administrateurs peuvent effectuer le pointage rendement.");
+            return;
+        }
+        renderRendementEmpList();
+        rendementModal.classList.add("active");
+    });
+}
+
+function renderRendementEmpList() {
+    const listEl = document.getElementById("rendement-emp-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    const rendementEmps = state.employees.filter(e => e.isRendement && isEmployeeActiveAtDate(e, state.currentYear, state.currentMonth));
+    if (rendementEmps.length === 0) {
+        listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:20px;">Aucun employé au rendement actif pour ce mois.</p>';
+        return;
+    }
+    const monthStr = String(state.currentMonth + 1).padStart(2, "0");
+    rendementEmps.forEach(emp => {
+        const key = `_rendement_days_${state.currentYear}_${state.currentMonth}`;
+        const existingDays = (state.pointages[emp.id] && state.pointages[emp.id][key]) || 0;
+        let countedDays = 0;
+        const daysInMonth = getDaysInMonth(state.currentYear, state.currentMonth);
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dKey = `${state.currentYear}-${monthStr}-${String(d).padStart(2, "0")}`;
+            const pd = state.pointages[emp.id] && state.pointages[emp.id][dKey];
+            if (pd && (pd.status === "present" || pd.arrivee)) countedDays++;
+        }
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; align-items:center; gap:10px; padding:8px 12px; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--border-radius-sm); border-left:4px solid #f59e0b;";
+        row.innerHTML = `
+            <input type="checkbox" class="rendement-emp-cb" value="${emp.id}" checked style="cursor:pointer;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:700; font-size:0.85rem;">${emp.name}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${emp.matricule || '—'} • ${emp.role}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <span style="font-size:0.72rem; color:var(--text-muted); font-weight:600;">Présent:</span>
+                <span style="font-size:0.82rem; font-weight:700; color:#10b981; min-width:30px; text-align:center;">${countedDays}j</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <label style="font-size:0.72rem; color:var(--text-muted); font-weight:600;">Saisie:</label>
+                <input type="number" class="rendement-days-input" data-emp-id="${emp.id}" min="0" max="30" value="${existingDays}" style="width:60px; padding:4px 6px; font-size:0.85rem; font-weight:700; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary); text-align:center;">
+                <span style="font-size:0.72rem; color:var(--text-muted);">jours</span>
+            </div>
+        `;
+        listEl.appendChild(row);
+    });
+    updateRendementSummary();
+    lucide.createIcons();
+}
+
+function updateRendementSummary() {
+    const summaryEl = document.getElementById("rendement-summary");
+    if (!summaryEl) return;
+    const cbs = document.querySelectorAll(".rendement-emp-cb:checked");
+    const inputs = document.querySelectorAll(".rendement-days-input");
+    let totalDays = 0;
+    inputs.forEach(inp => {
+        const cb = document.querySelector(`.rendement-emp-cb[value="${inp.getAttribute("data-emp-id")}"]`);
+        if (cb && cb.checked) totalDays += parseInt(inp.value) || 0;
+    });
+    summaryEl.textContent = `${cbs.length} employé(s) • ${totalDays} jour(s) au total`;
+}
+
+document.getElementById("rendement-select-all").addEventListener("change", function() {
+    document.querySelectorAll(".rendement-emp-cb").forEach(cb => { cb.checked = this.checked; });
+    updateRendementSummary();
+});
+
+document.getElementById("rendement-apply-default").addEventListener("click", () => {
+    const val = parseInt(document.getElementById("rendement-default-days").value) || 0;
+    document.querySelectorAll(".rendement-days-input").forEach(inp => { inp.value = val; });
+    updateRendementSummary();
+});
+
+document.getElementById("rendement-emp-list").addEventListener("input", (e) => {
+    if (e.target.classList.contains("rendement-days-input") || e.target.classList.contains("rendement-emp-cb")) {
+        updateRendementSummary();
+    }
+});
+
+document.getElementById("rendement-save-btn").addEventListener("click", () => {
+    const key = `_rendement_days_${state.currentYear}_${state.currentMonth}`;
+    const monthStr = String(state.currentMonth + 1).padStart(2, "0");
+    let updated = 0;
+    document.querySelectorAll(".rendement-emp-cb:checked").forEach(cb => {
+        const empId = cb.value;
+        const inp = document.querySelector(`.rendement-days-input[data-emp-id="${empId}"]`);
+        const days = parseInt(inp.value) || 0;
+        if (!state.pointages[empId]) state.pointages[empId] = {};
+        state.pointages[empId][key] = days;
+        const daysInMonth = getDaysInMonth(state.currentYear, state.currentMonth);
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dKey = `${state.currentYear}-${monthStr}-${String(d).padStart(2, "0")}`;
+            if (!state.pointages[empId][dKey]) state.pointages[empId][dKey] = {};
+            if (d <= days) {
+                state.pointages[empId][dKey].status = "present";
+            } else {
+                if (state.pointages[empId][dKey].status === "present" && !state.pointages[empId][dKey].arrivee) {
+                    delete state.pointages[empId][dKey].status;
+                }
+            }
+        }
+        updated++;
+    });
+    document.querySelectorAll(".rendement-emp-cb:not(:checked)").forEach(cb => {
+        const empId = cb.value;
+        if (state.pointages[empId] && state.pointages[empId][key]) {
+            delete state.pointages[empId][key];
+        }
+    });
+    saveStateToLocalStorage();
+    rendementModal.classList.remove("active");
+    refreshAllViews();
+    alert(`${updated} employé(s) rendement enregistré(s) avec succès.`);
+});
+
+function getRendementDaysCount(empId) {
+    const key = `_rendement_days_${state.currentYear}_${state.currentMonth}`;
+    return (state.pointages[empId] && state.pointages[empId][key]) || 0;
+}
+
+// ==========================================================================
+// EMPLOYEE BAR (Pointage tab inline list)
+// ==========================================================================
+function renderPointageEmpBar() {
+    const container = document.getElementById("pointage-emp-list");
+    if (!container) return;
+    container.innerHTML = "";
+    let sortedEmps = getSortedEmployees();
+    const activeEmps = sortedEmps.filter(e => isEmployeeActive(e));
+    if (activeEmps.length === 0) {
+        container.innerHTML = `<span style="font-size:0.75rem; color:var(--text-muted); padding:4px;">Aucun employé actif</span>`;
+        return;
+    }
+    const filteredEmps = activeEmps.filter(e => pointagePinnedRoles.includes((e.role || "Non Défini").trim()));
+    if (filteredEmps.length === 0) {
+        container.innerHTML = `<span style="font-size:0.75rem; color:var(--text-muted); padding:4px;">${pointagePinnedRoles.length === 0 ? 'Cochez une fonction pour afficher les employés' : 'Aucun employé pour les fonctions épinglées'}</span>`;
+        return;
+    }
+
+    // Scroll to left when a function is selected
+    container.scrollLeft = 0;
+
+    // Show employee chips (filteredEmps already contains only pinned functions' employees)
+    // Séparer les employés avec horaires standards par défaut
+    const defaultScheduleEmps = filteredEmps.filter(e => e.hasDefaultSchedule);
+    const otherEmps = filteredEmps.filter(e => !e.hasDefaultSchedule);
+
+    // Section "Horaires Standards"
+    if (defaultScheduleEmps.length > 0) {
+        const sectionLabel = document.createElement("span");
+        sectionLabel.style.cssText = "font-size:0.6rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:4px 6px; flex-shrink:0; white-space:nowrap; opacity:0.6; width:100%;";
+        sectionLabel.textContent = "Horaires Standards";
+        container.appendChild(sectionLabel);
+        let currentRole = "";
+        defaultScheduleEmps.forEach(emp => {
+            if (emp.role !== currentRole) {
+                currentRole = emp.role;
+                const sep = document.createElement("span");
+                sep.style.cssText = "font-size:0.6rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:2px 6px; flex-shrink:0; white-space:nowrap; opacity:0.6;";
+                sep.textContent = currentRole;
+                container.appendChild(sep);
+            }
+            container.appendChild(createEmpChip(emp));
+        });
+    }
+
+    // Section "Autres"
+    if (otherEmps.length > 0) {
+        const sectionLabel = document.createElement("span");
+        sectionLabel.style.cssText = "font-size:0.6rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:4px 6px; flex-shrink:0; white-space:nowrap; opacity:0.6; width:100%;";
+        sectionLabel.textContent = "Autres";
+        container.appendChild(sectionLabel);
+        let currentRole = "";
+        otherEmps.forEach(emp => {
+            if (emp.role !== currentRole) {
+                currentRole = emp.role;
+                const sep = document.createElement("span");
+                sep.style.cssText = "font-size:0.6rem; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:2px 6px; flex-shrink:0; white-space:nowrap; opacity:0.6;";
+                sep.textContent = currentRole;
+                container.appendChild(sep);
+            }
+            container.appendChild(createEmpChip(emp));
+        });
+    }
+
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function updateHeaderActiveCount() {
+    const el = document.getElementById("header-active-count");
+    if (!el) return;
+    const activeCount = state.employees ? state.employees.filter(e => isEmployeeActive(e)).length : 0;
+    const totalCount = state.employees ? state.employees.length : 0;
+    el.textContent = `${activeCount} actif(s)`;
+    el.title = `${activeCount} actif(s) / ${totalCount} total pour ${state.currentMonth + 1}/${state.currentYear}`;
+}
+
+function createEmpChip(emp) {
+    const isActive = emp.id === state.activeEmployeeId;
+    const isRdt = emp.isRendement;
+    const chip = document.createElement("button");
+    chip.className = `pointage-emp-chip ${isActive ? "active" : ""}`;
+    chip.style.cssText = `
+        display:inline-flex; align-items:center; gap:4px;
+        padding:3px 8px; border-radius:16px; font-size:0.72rem; font-weight:${isActive ? "700" : "500"};
+        cursor:pointer; white-space:nowrap; flex-shrink:0;
+        border:1.5px solid ${isActive ? "var(--accent-day)" : "var(--border-color)"};
+        background:${isActive ? "rgba(59,130,246,0.1)" : "var(--bg-input)"};
+        color:${isActive ? "var(--accent-day)" : "var(--text-primary)"};
+        transition: all 0.15s;
+    `;
+    const initial = (emp.name || "?").charAt(0).toUpperCase();
+    chip.innerHTML = `
+        <span style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:700; ${isRdt ? 'background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;' : 'background:var(--accent-day); color:#fff;'}">${initial}</span>
+        <span>${(emp.name || "").split(" ")[0]}</span>
+        ${isRdt ? '<i data-lucide="zap" style="width:9px;height:9px;"></i>' : ''}
+    `;
+    chip.addEventListener("click", () => selectEmployee(emp.id));
+    chip.addEventListener("mouseenter", () => { if (!isActive) chip.style.borderColor = "var(--accent-day)"; });
+    chip.addEventListener("mouseleave", () => { if (!isActive) chip.style.borderColor = "var(--border-color)"; });
+    return chip;
+}
+
+// ==========================================================================
+// COLUMN PINNER (Show/Hide column groups)
+// ==========================================================================
+const COLUMN_GROUPS = [
+    { id: "col-jour", label: "Jour", icon: "calendar" },
+    { id: "col-statut", label: "Statut", icon: "toggle-left" },
+    { id: "col-rendement", label: "Rendement", icon: "zap" },
+    { id: "col-shift-jour", label: "Shift Jour", icon: "sun" },
+    { id: "col-shift-nuit", label: "Shift Nuit", icon: "moon" },
+    { id: "col-obs", label: "Remarques", icon: "message-square" },
+    { id: "col-totaux", label: "Totaux", icon: "calculator" },
+];
+
+function getHiddenColumns() {
+    try { return JSON.parse(localStorage.getItem("pps_hidden_cols") || "[]"); } catch(e) { return []; }
+}
+
+function setHiddenColumns(arr) {
+    localStorage.setItem("pps_hidden_cols", JSON.stringify(arr));
+}
+
+function toggleColumnGroup(colId) {
+    const hidden = getHiddenColumns();
+    const idx = hidden.indexOf(colId);
+    if (idx >= 0) hidden.splice(idx, 1);
+    else hidden.push(colId);
+    setHiddenColumns(hidden);
+    applyColumnVisibility();
+    renderColumnPinnerMenu();
+}
+
+function applyColumnVisibility() {
+    const hidden = getHiddenColumns();
+    document.querySelectorAll("[data-col-group]").forEach(el => {
+        const colId = el.getAttribute("data-col-group");
+        el.style.display = hidden.includes(colId) ? "none" : "";
+    });
+}
+
+function renderColumnPinnerMenu() {
+    const menu = document.getElementById("col-pinner-menu");
+    if (!menu) return;
+    const hidden = getHiddenColumns();
+    menu.innerHTML = "";
+    COLUMN_GROUPS.forEach(col => {
+        const isVisible = !hidden.includes(col.id);
+        const item = document.createElement("div");
+        item.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer; border-radius:6px; font-size:0.78rem; font-weight:500; transition:background 0.12s;";
+        item.innerHTML = `
+            <span style="width:18px; height:18px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.7rem; border:1.5px solid ${isVisible ? 'var(--accent-day)' : '#d1d5db'}; background:${isVisible ? 'rgba(59,130,246,0.1)' : 'transparent'}; color:${isVisible ? 'var(--accent-day)' : '#9ca3af'}; transition:all 0.15s;">
+                ${isVisible ? '✓' : ''}
+            </span>
+            <i data-lucide="${col.icon}" style="width:13px;height:13px;opacity:0.5;"></i>
+            <span>${col.label}</span>
+        `;
+        item.addEventListener("mouseenter", () => item.style.background = "var(--bg-input)");
+        item.addEventListener("mouseleave", () => item.style.background = "transparent");
+        item.addEventListener("click", () => toggleColumnGroup(col.id));
+        menu.appendChild(item);
+    });
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+// Init column pinner button + dropdown
+document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("col-pinner-btn");
+    const dropdown = document.getElementById("col-pinner-dropdown");
+    if (btn && dropdown) {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = dropdown.style.display === "block";
+            dropdown.style.display = isOpen ? "none" : "block";
+            if (!isOpen) renderColumnPinnerMenu();
+        });
+        document.addEventListener("click", () => { dropdown.style.display = "none"; });
+        dropdown.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    // Fonction dropdown
+    const funcBtn = document.getElementById("pointage-func-selector-btn");
+    const funcDropdown = document.getElementById("pointage-func-selector-dropdown");
+    if (funcBtn && funcDropdown) {
+        funcBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = funcDropdown.style.display === "block";
+            funcDropdown.style.display = isOpen ? "none" : "block";
+            if (!isOpen) renderPointageFonctionsBar();
+        });
+        document.addEventListener("click", () => { funcDropdown.style.display = "none"; });
+        funcDropdown.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    loadPinnedRoles();
+    renderPointageFonctionsBar();
+    renderPointageEmpBar();
+    applyColumnVisibility();
+    updateHeaderActiveCount();
+});
+
+const _origRefreshAllViews2 = refreshAllViews;
+refreshAllViews = function() {
+    _origRefreshAllViews2();
+    renderPointageEmpBar();
+    applyColumnVisibility();
+    updateHeaderActiveCount();
+};
+
+// ==========================================================================
+// POINTAGE STANDARD (Bulk pointage for standard/hourly workers)
+// ==========================================================================
+const stdModal = document.getElementById("standard-pointing-modal");
+const openStdBtn = document.getElementById("open-standard-pointing-btn");
+
+if (openStdBtn) {
+    openStdBtn.addEventListener("click", () => {
+        if (!state.currentUser || state.currentUser.role !== "ADMIN") {
+            alert("Seuls les administrateurs peuvent effectuer un pointage standard.");
+            return;
+        }
+        renderStdPointingEmpList();
+        renderStdPointingDays();
+        stdModal.classList.add("active");
+    });
+}
+
+function renderStdPointingEmpList() {
+    const listEl = document.getElementById("std-pointing-employee-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const funcFilter = document.getElementById("std-pointing-func-filter");
+    if (funcFilter) {
+        const rolesSet = new Set();
+        state.employees.forEach(emp => {
+            if (isEmployeeActive(emp) && !emp.isRendement) {
+                rolesSet.add((emp.role || "Non Défini").trim());
+            }
+        });
+        const roles = Array.from(rolesSet).sort();
+        let filterHtml = '<option value="">Toutes</option>';
+        roles.forEach(r => { filterHtml += `<option value="${r}">${r}</option>`; });
+        funcFilter.innerHTML = filterHtml;
+        funcFilter.onchange = renderStdPointingEmpList;
+    }
+
+    const funcVal = funcFilter ? funcFilter.value : "";
+    const stdEmps = getSortedEmployees().filter(e => isEmployeeActive(e) && !e.isRendement && (!funcVal || (e.role || "Non Défini").trim() === funcVal));
+
+    if (stdEmps.length === 0) {
+        listEl.innerHTML = '<p style="font-size:0.85rem; color:var(--text-muted); text-align:center; padding:20px;">Aucun employé standard actif.</p>';
+        return;
+    }
+
+    stdEmps.forEach(emp => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:4px; cursor:pointer; transition:background 0.15s;";
+        row.innerHTML = `
+            <input type="checkbox" class="std-emp-cb" value="${emp.id}" style="cursor:pointer;">
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:600; font-size:0.85rem;">${emp.name}</div>
+                <div style="font-size:0.72rem; color:var(--text-muted);">${emp.matricule || '—'} · ${emp.role || 'N/A'}</div>
+            </div>
+        `;
+        row.addEventListener("click", (e) => {
+            if (e.target.type !== "checkbox") {
+                const cb = row.querySelector(".std-emp-cb");
+                cb.checked = !cb.checked;
+                updateStdPointingCount();
+            }
+        });
+        listEl.appendChild(row);
+    });
+    updateStdPointingCount();
+    if (typeof lucide !== "undefined") lucide.createIcons();
+}
+
+function renderStdPointingDays() {
+    const daysContainer = document.getElementById("std-pointing-days-container");
+    if (!daysContainer) return;
+    daysContainer.innerHTML = "";
+
+    const currentMonth = state.currentMonth;
+    const currentYear = state.currentYear;
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dayOfWeek = new Date(currentYear, currentMonth, d).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "std-day-btn";
+        btn.dataset.date = dateStr;
+        btn.textContent = d;
+        btn.style.cssText = `
+            width: 36px; height: 36px; border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm); background: var(--bg-input);
+            color: var(--text-primary); font-size: 0.75rem; cursor: pointer;
+            transition: all 0.15s;
+        `;
+        if (isWeekend) {
+            btn.style.background = "rgba(156,165,173,0.15)";
+            btn.style.color = "var(--text-muted)";
+        }
+        btn.addEventListener("click", () => {
+            btn.classList.toggle("selected");
+            if (btn.classList.contains("selected")) {
+                btn.style.background = isWeekend ? "rgba(239,68,68,0.25)" : "var(--accent-day)";
+                btn.style.color = "#ffffff";
+            } else {
+                btn.style.background = isWeekend ? "rgba(156,165,173,0.15)" : "var(--bg-input)";
+                btn.style.color = isWeekend ? "var(--text-muted)" : "var(--text-primary)";
+            }
+        });
+        daysContainer.appendChild(btn);
+    }
+}
+
+function updateStdPointingCount() {
+    const countEl = document.getElementById("std-pointing-count-label");
+    if (!countEl) return;
+    const checked = document.querySelectorAll(".std-emp-cb:checked").length;
+    countEl.textContent = `${checked} employé(s) sélectionné(s)`;
+}
+
+document.getElementById("std-pointing-select-all").addEventListener("click", () => {
+    document.querySelectorAll(".std-emp-cb").forEach(cb => cb.checked = true);
+    updateStdPointingCount();
+});
+
+document.getElementById("std-pointing-unselect-all").addEventListener("click", () => {
+    document.querySelectorAll(".std-emp-cb").forEach(cb => cb.checked = false);
+    updateStdPointingCount();
+});
+
+document.getElementById("std-pointing-employee-list").addEventListener("change", () => updateStdPointingCount());
+
+document.getElementById("confirm-std-pointing-btn").addEventListener("click", () => {
+    const selectedDays = document.querySelectorAll(".std-day-btn.selected");
+    if (selectedDays.length === 0) {
+        alert("Veuillez sélectionner au moins un jour.");
+        return;
+    }
+    const isAbsent = document.getElementById("std-pointing-absence-cb").checked;
+    const checked = document.querySelectorAll(".std-emp-cb:checked");
+    if (checked.length === 0) {
+        alert("Veuillez sélectionner au moins un employé.");
+        return;
+    }
+
+    let applied = 0;
+    selectedDays.forEach(dayBtn => {
+        const dateKey = dayBtn.dataset.date;
+        checked.forEach(cb => {
+            const empId = cb.value;
+            if (!state.pointages[empId]) state.pointages[empId] = {};
+            if (!state.pointages[empId][dateKey]) state.pointages[empId][dateKey] = {};
+
+            const pd = state.pointages[empId][dateKey];
+            if (isAbsent) {
+                pd.status = "absent";
+                pd.arrivee = ""; pd.pause = ""; pd.reprise = ""; pd.fin = "";
+                pd.nuitActive = false;
+            } else {
+                pd.status = "present";
+                pd.arrivee = "";
+                pd.pause = "";
+                pd.reprise = "";
+                pd.fin = "";
+                pd.nuitActive = false;
+            }
+            applied++;
+        });
+    });
+
+    saveStateToLocalStorage();
+    stdModal.classList.remove("active");
+    refreshAllViews();
+    alert(`${applied} pointage(s) enregistré(s) pour ${selectedDays.length} jour(s).`);
+});

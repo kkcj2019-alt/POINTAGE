@@ -551,90 +551,94 @@ body {
 }
 
 /* ==========================================================================
+   EMPLOYEE BAR (Pointage tab)
+   ========================================================================== */
+#pointage-emp-bar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
+}
+#pointage-emp-list::-webkit-scrollbar {
+    height: 4px;
+}
+#pointage-emp-list::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+.pointage-emp-chip {
+    transition: all 0.15s;
+}
+.pointage-emp-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ==========================================================================
    DASHBOARD CARDS (KPIs)
    ========================================================================== */
 
 .kpi-container {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    margin-bottom: 24px;
-}
-
-@media (max-width: 1200px) {
-    .kpi-container {
-        grid-template-columns: repeat(2, 1fr);
-    }
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 6px 24px;
 }
 
 .kpi-card {
-    background-color: var(--bg-card);
+    flex: 1;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-lg);
-    padding: 20px;
+    border-radius: var(--border-radius-md);
+    padding: 8px 12px;
     display: flex;
     align-items: center;
-    gap: 16px;
-    box-shadow: var(--shadow-glass);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    gap: 8px;
+    box-shadow: none;
     transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    border-left: 3px solid transparent;
 }
 
 .kpi-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: none;
+    box-shadow: var(--shadow-sm);
 }
 
-.kpi-card.highlight {
-    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(52, 211, 153, 0.05) 100%);
-    border-color: var(--accent-total);
+.kpi-card.kpi-jour {
+    border-left-color: var(--accent-day);
 }
-
-.kpi-icon-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: var(--border-radius-md);
+.kpi-card.kpi-nuit {
+    border-left-color: var(--accent-night);
 }
-
-.kpi-icon-wrapper.jour {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: var(--accent-day);
+.kpi-card.kpi-jours {
+    border-left-color: #f59e0b;
 }
-
-.kpi-icon-wrapper.nuit {
-    background-color: rgba(139, 92, 246, 0.1);
-    color: var(--accent-night);
+.kpi-card.kpi-total {
+    border-left-color: var(--accent-total);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(16, 185, 129, 0.04) 100%);
 }
-
-.kpi-icon-wrapper.reg-nuit {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: #f59e0b;
-}
-
-.kpi-icon-wrapper.total {
-    background-color: rgba(16, 185, 129, 0.1);
-    color: var(--accent-total);
+.kpi-card.kpi-transport {
+    border-left-color: #0ea5e9;
 }
 
 .kpi-data {
     display: flex;
     flex-direction: column;
+    gap: 1px;
 }
 
 .kpi-label {
-    font-size: 0.8rem;
+    font-size: 0.68rem;
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1;
 }
 
 .kpi-value {
     font-family: var(--font-heading);
-    font-size: 1.45rem;
+    font-size: 1.1rem;
     font-weight: 700;
+    line-height: 1.2;
 }
 
 /* ==========================================================================
@@ -721,8 +725,10 @@ th:last-child {
 }
 
 .col-header-group.totaux {
-    background-color: rgba(16, 185, 129, 0.05);
+    background-color: rgba(16, 185, 129, 0.06);
     color: var(--accent-total);
+    text-align: center;
+    font-size: 0.72rem;
 }
 
 .sub-headers th {
@@ -732,10 +738,10 @@ th:last-child {
 }
 
 td {
-    padding: 10px 8px; /* Aéré */
-    border-bottom: 1px solid #94a3b8; /* Darker border for visibility */
-    border-right: 1px solid #94a3b8;
-    height: 56px; /* Plus aéré */
+    padding: 8px 6px;
+    border-bottom: 1px solid #d1d5db;
+    border-right: 1px solid #d1d5db;
+    height: auto;
     transition: background-color var(--transition-fast);
 }
 
@@ -903,20 +909,23 @@ table.show-rendement .col-rendement-cell {
 
 /* Output calculation cells */
 .total-cell {
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.82rem;
     color: var(--text-secondary);
+    text-align: center;
+    padding: 6px 8px !important;
 }
 
 .highlight-col {
-    background-color: rgba(16, 185, 129, 0.02) !important;
-    font-weight: 700;
-    font-size: 0.95rem;
+    background-color: rgba(16, 185, 129, 0.04) !important;
+    font-weight: 800;
+    font-size: 0.9rem;
     color: var(--accent-total);
+    border-left: 2px solid rgba(16, 185, 129, 0.2) !important;
 }
 
 tr:hover .highlight-col {
-    background-color: rgba(16, 185, 129, 0.05) !important;
+    background-color: rgba(16, 185, 129, 0.08) !important;
 }
 
 /* Notes column */
@@ -1107,15 +1116,17 @@ tr td input.time-input[value="MP"] {
     }
     
     .kpi-container {
-        grid-template-columns: repeat(4, 1fr);
-        gap: 10px;
-        margin-bottom: 20px;
+        display: flex;
+        gap: 6px;
+        margin-bottom: 12px;
     }
     
     .kpi-card {
         border: 1px solid #ccc;
         box-shadow: none;
-        padding: 10px;
+        padding: 4px 6px;
+        gap: 4px;
+        border-left-width: 2px;
     }
     
     .table-container {
@@ -1427,20 +1438,25 @@ tr td input.time-input[value="MP"] {
     font-style: italic;
 }
 
-.val-total-jour .decimal-value {
-    color: var(--accent-day);
-    opacity: 0.7;
+.func-pin-cb {
+    width: 16px !important;
+    height: 16px !important;
+    cursor: pointer;
+}
+.func-pin-cb:checked {
+    accent-color: var(--accent-day);
 }
 
-.val-total-nuit .decimal-value {
-    color: var(--accent-night);
-    opacity: 0.7;
+#pointage-func-selector-dropdown {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-color) transparent;
 }
-
-.highlight-col .decimal-value {
-    color: var(--accent-total);
-    opacity: 0.8;
-    font-size: 0.72rem;
+#pointage-func-selector-dropdown::-webkit-scrollbar {
+    width: 4px;
+}
+#pointage-func-selector-dropdown::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
 }
 
 .kpi-decimal {
@@ -1474,20 +1490,23 @@ tr td input.time-input[value="MP"] {
     }
 
     .kpi-container {
-        margin-bottom: 5px;
+        margin-bottom: 6px;
         gap: 4px;
+        padding: 4px 12px;
+        flex-wrap: wrap;
     }
 
     .kpi-card {
         padding: 4px 6px;
+        min-width: 0;
     }
 
     .kpi-value {
-        font-size: 0.95rem;
+        font-size: 0.85rem;
     }
 
     .kpi-label {
-        font-size: 0.6rem;
+        font-size: 0.58rem;
     }
 
     .decimal-value {
@@ -1992,4 +2011,15 @@ tr.holiday-active-nuit td {
         flex-direction: column;
         gap: 8px;
     }
+}
+
+.std-day-btn.selected {
+    background: var(--accent-day) !important;
+    color: #ffffff !important;
+    border-color: var(--accent-day) !important;
+}
+
+.std-day-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }

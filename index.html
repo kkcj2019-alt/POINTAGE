@@ -278,11 +278,17 @@
                             </select>
                             <i data-lucide="chevron-down" class="select-icon"></i>
                         </div>
+                        <span id="header-active-count" style="font-size:0.8rem; color:var(--text-muted); font-weight:600; padding:4px 10px; background:var(--bg-input); border-radius:16px; border:1px solid var(--border-color); min-width:80px; text-align:center;">
+                            —
+                        </span>
                     </div>
 
                     <div style="display:flex; align-items:center; gap:8px;">
                         <button id="open-group-pointing-btn" class="btn btn-primary btn-sm" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
                             <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Pointage Groupé
+                        </button>
+                        <button id="open-standard-pointing-btn" class="btn btn-sm" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; white-space: nowrap; background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none;">
+                            <i data-lucide="users" style="width: 14px; height: 14px;"></i> Pointage Standard
                         </button>
                         <button id="header-print-btn" class="btn btn-secondary btn-sm" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; white-space: nowrap;">
                             <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Imprimer
@@ -357,12 +363,31 @@
                 </div>
 
                 <!-- Filtres par Fonction -->
-                <div id="pointage-fonctions-bar" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; flex:1;">
-                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-right:4px;">Fonction :</span>
-                    <!-- Rempli dynamiquement par JS -->
+                <div id="pointage-fonctions-bar" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; flex:1;">
+                    <span style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-right:4px;">Fonctions :</span>
+                    <div style="position:relative; display:inline-block;">
+                        <button id="pointage-func-selector-btn" class="btn btn-secondary btn-sm" style="padding:4px 10px; font-size:0.72rem; display:flex; align-items:center; gap:4px;">
+                            <i data-lucide="plus" style="width:12px; height:12px;"></i> Fonctions
+                        </button>
+                        <div id="pointage-func-selector-dropdown" style="display:none; position:absolute; top:100%; left:0; margin-top:4px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-md); box-shadow:var(--shadow-lg); padding:6px; z-index:300; max-height:280px; overflow-y:auto; min-width:180px;">
+                            <!-- Rempli par JS -->
+                        </div>
+                    </div>
+                    <!-- Chips des fonctions épinglées -->
+                    <div id="pointage-func-chips" style="display:flex; gap:4px; flex-wrap:wrap; align-items:center; flex:1;">
+                        <!-- Rempli par JS -->
+                    </div>
                 </div>
                 
                 <!-- Actions Export/Print Pointage removed — now in header -->
+            </div>
+
+            <!-- Liste des travailleurs (compact, scrollable) -->
+            <div id="pointage-emp-bar" style="display:flex; align-items:center; gap:6px; padding:6px 24px; border-bottom:1px solid var(--border-color); background:var(--bg-card);">
+                <i data-lucide="users" style="width:14px; height:14px; color:var(--text-muted); flex-shrink:0;"></i>
+                <div id="pointage-emp-list" style="display:flex; gap:4px; overflow-x:auto; flex:1; scrollbar-width:thin; padding:2px 0;">
+                    <!-- Rempli dynamiquement par JS -->
+                </div>
             </div>
 
             <!-- Mini Calendrier Navigation Rapide -->
@@ -374,53 +399,43 @@
 
             <!-- KPI Cards Summary -->
             <section class="kpi-container">
-                <div class="kpi-card">
-                    <div class="kpi-icon-wrapper jour">
-                        <i data-lucide="sun"></i>
-                    </div>
+                <div class="kpi-card kpi-jour">
+                    <i data-lucide="sun" style="width:16px; height:16px; opacity:0.7;"></i>
                     <div class="kpi-data">
-                        <span class="kpi-label">Heures de Jour (05h - 21h)</span>
+                        <span class="kpi-label">H. Jour</span>
                         <span id="kpi-day-hours" class="kpi-value">00:00</span>
                     </div>
                 </div>
                 
-                <div class="kpi-card">
-                    <div class="kpi-icon-wrapper nuit">
-                        <i data-lucide="moon"></i>
-                    </div>
+                <div class="kpi-card kpi-nuit">
+                    <i data-lucide="moon" style="width:16px; height:16px; opacity:0.7;"></i>
                     <div class="kpi-data">
-                        <span class="kpi-label">Heures de Nuit (21h - 05h)</span>
+                        <span class="kpi-label">H. Nuit</span>
                         <span id="kpi-night-hours" class="kpi-value">00:00</span>
                     </div>
                 </div>
 
-                <div class="kpi-card">
-                    <div class="kpi-icon-wrapper reg-nuit">
-                        <i data-lucide="calendar-check"></i>
-                    </div>
+                <div class="kpi-card kpi-jours">
+                    <i data-lucide="calendar-check" style="width:16px; height:16px; opacity:0.7;"></i>
                     <div class="kpi-data">
-                        <span class="kpi-label">Jours Travaillés</span>
-                        <span id="kpi-days-worked" class="kpi-value">0 jours</span>
+                        <span class="kpi-label">Jours</span>
+                        <span id="kpi-days-worked" class="kpi-value">0j</span>
                     </div>
                 </div>
                 
-                <div class="kpi-card highlight">
-                    <div class="kpi-icon-wrapper total">
-                        <i data-lucide="award"></i>
-                    </div>
+                <div class="kpi-card kpi-total">
+                    <i data-lucide="award" style="width:16px; height:16px; opacity:0.7;"></i>
                     <div class="kpi-data">
-                        <span class="kpi-label">Total Heures Cumulées</span>
+                        <span class="kpi-label">Total</span>
                         <span id="kpi-total-hours" class="kpi-value">00:00</span>
                     </div>
                 </div>
 
-                <div class="kpi-card" id="kpi-transport-card" style="display:none; border-left: 3px solid #0ea5e9;">
-                    <div class="kpi-icon-wrapper" style="background: linear-gradient(135deg, #0ea5e9, #0284c7);">
-                        <i data-lucide="bus"></i>
-                    </div>
+                <div class="kpi-card kpi-transport" id="kpi-transport-card" style="display:none;">
+                    <i data-lucide="bus" style="width:16px; height:16px; opacity:0.7;"></i>
                     <div class="kpi-data">
-                        <span class="kpi-label">Transport du Mois</span>
-                        <span id="kpi-transport" class="kpi-value" style="color:#0284c7;">—</span>
+                        <span class="kpi-label">Transport</span>
+                        <span id="kpi-transport" class="kpi-value">—</span>
                     </div>
                 </div>
 
@@ -447,39 +462,42 @@
                         <button id="clear-month-btn" class="btn-text">
                             <i data-lucide="trash-2"></i> Effacer ce mois
                         </button>
+                        <div style="position:relative;">
+                            <button id="col-pinner-btn" class="btn-text btn-sm" title="Choisir les colonnes affichées" style="display:flex; align-items:center; gap:4px; font-size:0.8rem;">
+                                <i data-lucide="columns-3" style="width:14px; height:14px;"></i> Colonnes
+                            </button>
+                            <div id="col-pinner-dropdown" style="display:none; position:absolute; top:100%; right:0; margin-top:4px; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--border-radius-md); box-shadow:var(--shadow-lg); padding:6px; z-index:300; min-width:180px; max-height:320px; overflow-y:auto;">
+                                <!-- Rempli par JS -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="table-wrapper">
                     <table id="pointage-table">
                         <thead>
                             <tr>
-                                <th class="col-day">Jour</th>
-                                <th class="col-toggle">Statut</th>
-                                <th class="col-rendement-header">Rendement</th>
-                                <th colspan="4" class="col-header-group jour">Shift Jour</th>
-                                <th colspan="4" class="col-header-group nuit night-header">Shift Nuit (Optionnel)</th>
-                                <th class="col-notes-header">Obs.</th>
-                                <th colspan="3" class="col-header-group totaux">Calculs &amp; Durées</th>
+                                <th class="col-day" data-col-group="col-jour">Jour</th>
+                                <th class="col-toggle" data-col-group="col-statut">Statut</th>
+                                <th class="col-rendement-header" data-col-group="col-rendement">Rendement</th>
+                                <th colspan="4" class="col-header-group jour" data-col-group="col-shift-jour">Shift Jour</th>
+                                <th colspan="4" class="col-header-group nuit night-header" data-col-group="col-shift-nuit">Shift Nuit</th>
+                                <th class="col-notes-header" data-col-group="col-obs">Obs.</th>
+                                <th colspan="3" class="col-header-group totaux" data-col-group="col-totaux">Calculs</th>
                             </tr>
                             <tr class="sub-headers">
-                                <th>Date</th>
-                                <!-- Status -->
-                                <th>Présence</th>
-                                <th class="col-rendement-header">Rendement ?</th>
-                                <!-- Day shift -->
-                                <th>Arrivée</th>
-                                <th>Pause</th>
-                                <th>Reprise</th>
-                                <th>Fin</th>
-                                <!-- Night shift toggle -->
-                                <th>Nuit ?</th>
-                                <!-- Night shift -->
-                                <th class="night-header">Début</th>
-                                <th class="night-header">Pause</th>
-                                <th class="night-header">Reprise</th>
-                                <th class="night-header">Fin</th>
-                                <!-- Observations text column -->
-                                <th class="notes-sub-header">Remarques</th>
+                                <th data-col-group="col-jour">Date</th>
+                                <th data-col-group="col-statut">Présence</th>
+                                <th class="col-rendement-header" data-col-group="col-rendement">Rendement ?</th>
+                                <th data-col-group="col-shift-jour">Arrivée</th>
+                                <th data-col-group="col-shift-jour">Pause</th>
+                                <th data-col-group="col-shift-jour">Reprise</th>
+                                <th data-col-group="col-shift-jour">Fin</th>
+                                <th data-col-group="col-shift-nuit">Nuit ?</th>
+                                <th class="night-header" data-col-group="col-shift-nuit">Début</th>
+                                <th class="night-header" data-col-group="col-shift-nuit">Pause</th>
+                                <th class="night-header" data-col-group="col-shift-nuit">Reprise</th>
+                                <th class="night-header" data-col-group="col-shift-nuit">Fin</th>
+                                <th class="notes-sub-header" data-col-group="col-obs">Remarques</th>
                                 <!-- Totals -->
                                 <th>H. Jour<br><small style="font-weight:400;color:var(--text-muted);">(05h-21h)</small></th>
                                 <th>H. Nuit<br><small style="font-weight:400;color:var(--text-muted);">(21h-05h)</small></th>
@@ -929,7 +947,7 @@
                 <!-- En-tête et Actions -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <h2 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 700; margin: 0; color: var(--text-primary);">Base de Données Employés</h2>
+                        <h2 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 700; margin: 0; color: var(--text-primary); display:flex; align-items:center; gap:10px;">Base de Données Employés <span id="params-active-count" style="font-size:0.85rem; background:var(--bg-input); color:var(--text-muted); padding:2px 10px; border-radius:20px; border:1px solid var(--border-color);"></span></h2>
                         <p style="color: var(--text-muted); margin: 6px 0 0 0; font-size: 0.95rem;">Gérez tous les profils, départements et fonctions de votre personnel</p>
                     </div>
                     <div style="display:flex; gap:12px; flex-wrap:wrap;">
@@ -991,6 +1009,7 @@
                                 <tr style="background: var(--bg-card); border-bottom: 2px solid var(--border-color);">
                                     <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Employé</th>
                                     <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Fonction</th>
+                                    <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Type Pointage</th>
                                     <th style="padding: 16px; text-align: left; font-weight: 600; color: var(--text-secondary);">Département</th>
                                     <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Transport</th>
                                     <th style="padding: 16px; text-align: center; font-weight: 600; color: var(--text-secondary);">Date Embauche</th>
@@ -1243,6 +1262,43 @@
         </div>
     </div>
 
+    <!-- Modal: Pointage Rendement (en jours) -->
+    <div id="rendement-pointing-modal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2 style="display:flex;align-items:center;gap:8px;"><i data-lucide="zap" style="width:22px;height:22px;color:#f59e0b;"></i> Pointage Rendement (en jours)</h2>
+                <button class="close-modal-btn"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" style="max-height:60vh; overflow-y:auto; padding:20px;">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 14px 0;">
+                    Sélectionnez les employés au rendement et indiquez le nombre de jours travaillés ce mois. Un jour marqué "Présent" dans Suivi Présence = 1 jour décompté.
+                </p>
+                <div style="margin-bottom:14px; display:flex; gap:10px; align-items:center;">
+                    <label style="font-size:0.8rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                        <input type="checkbox" id="rendement-select-all" checked> Tout sélectionner
+                    </label>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <label style="font-size:0.8rem; font-weight:600;">Jours par défaut :</label>
+                        <input type="number" id="rendement-default-days" min="0" max="30" value="0" style="width:60px; padding:4px 6px; font-size:0.85rem; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-card); color:var(--text-primary);">
+                    </div>
+                    <button id="rendement-apply-default" class="btn btn-sm btn-secondary" style="padding:4px 10px; font-size:0.75rem;">Appliquer à tous</button>
+                </div>
+                <div id="rendement-emp-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <div id="rendement-summary" style="font-size:0.82rem; color:var(--text-muted); font-weight:600;"></div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                    <button type="button" id="rendement-save-btn" class="btn btn-primary" style="background:linear-gradient(135deg,#f59e0b,#d97706); border:none;">
+                        <i data-lucide="check" style="width:14px;height:14px;"></i> Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Settings Alertes Absences -->
     <div id="alert-settings-modal" class="modal">
         <div class="modal-content" style="max-width: 450px;">
@@ -1322,6 +1378,10 @@
                         <div style="display: flex; gap: 8px; margin-bottom: 15px;">
                             <input type="text" id="new-func-name" placeholder="Nouvelle fonction..." style="flex: 1; padding: 6px 12px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-card); color: var(--text-primary);">
                             <button id="add-func-btn" class="btn btn-primary btn-sm" style="padding: 6px 12px;">Ajouter</button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px; padding: 6px 8px; background:var(--bg-input); border-radius:var(--border-radius-sm); border:1px solid var(--border-color);">
+                            <input type="checkbox" id="new-func-pin-pointage" style="width: auto;">
+                            <label for="new-func-pin-pointage" style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">Épingler à l'onglet Pointage</label>
                         </div>
                         <div id="func-list-container" style="display: flex; flex-direction: column; gap: 6px; max-height: 250px; overflow-y: auto;">
                             <!-- Populate dynamically -->
@@ -1421,7 +1481,55 @@
         </div>
     </div>
 
-    <!-- Modal: Affectation de fonction groupée -->
+    <!-- Modal: Pointage Standard (travailleurs horaires standards - présence simple) -->
+    <div id="standard-pointing-modal" class="modal">
+        <div class="modal-content" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2 style="display:flex;align-items:center;gap:8px;"><i data-lucide="users" style="width:22px;height:22px;color:#10b981;"></i> Pointage Standard</h2>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px 0; max-height: 75vh; overflow-y: auto;">
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px;">
+                    <i data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;"></i>
+                    Cochez les employés et les jours à marquer comme présents. Aucune saisie d'heures nécessaire.
+                </p>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Employés standards <span style="color: var(--accent-danger);">*</span></label>
+                    <div style="display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; align-items: center;">
+                        <button type="button" id="std-pointing-select-all" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">Tout cocher</button>
+                        <button type="button" id="std-pointing-unselect-all" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">Tout décocher</button>
+                        <span style="color:var(--border-color); margin: 0 2px;">|</span>
+                        <label style="font-size:0.72rem; color:var(--text-muted); margin:0;">Fonction :</label>
+                        <select id="std-pointing-func-filter" style="font-size:0.72rem; padding:3px 6px; border:1px solid var(--border-color); border-radius:var(--border-radius-sm); background:var(--bg-input); color:var(--text-primary); max-width:160px;">
+                            <option value="">Toutes</option>
+                        </select>
+                    </div>
+                    <div id="std-pointing-employee-list" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 6px;">
+                        <!-- Dynamiquement rempli -->
+                    </div>
+                    <p id="std-pointing-count-label" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">0 employé(s) sélectionné(s)</p>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; margin-bottom: 6px; display: block;">Jours du mois <span style="color: var(--accent-danger);">*</span></label>
+                    <div id="std-pointing-days-container" style="display: flex; flex-wrap: wrap; gap: 4px; max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); background: var(--bg-input);">
+                        <!-- Jour buttons générés par JS -->
+                    </div>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Cliquez sur les jours à cocher. Les jours ouvrables sont en bleu, les week-ends en gris.</p>
+                </div>
+
+                <div class="form-group checkbox-group" style="margin: 12px 0;">
+                    <input type="checkbox" id="std-pointing-absence-cb">
+                    <label for="std-pointing-absence-cb" style="color: var(--accent-danger);">Marquer comme Absent (au lieu de Présent)</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary close-modal-btn">Annuler</button>
+                <button type="button" id="confirm-std-pointing-btn" class="btn btn-primary">Appliquer</button>
+            </div>
+        </div>
+    </div>
     <div id="bulk-assign-role-modal" class="modal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
