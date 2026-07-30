@@ -1,0 +1,10 @@
+const fs = require('fs');
+const path = 'C:/Users/ACSER DIRECTION/OneDrive/Desktop/new/HEURES TAF/index_v2.html';
+let s = fs.readFileSync(path, 'utf8');
+const before = s.length;
+s = s.replace(
+  'if (empSel) empSel.style.display = "none";',
+  'if (empSel) empSel.style.display = "";\n            renderEmployeeCheckboxes(p.id);'
+);
+fs.writeFileSync(path, s);
+console.log('index_v2.html:', s.length - before > 0 ? 'updated (+' + (s.length - before) + ' bytes)' : 'unchanged');
