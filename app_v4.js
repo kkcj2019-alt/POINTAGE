@@ -7450,11 +7450,12 @@ function renderPointageEmpBar() {
 
         if (typeof lucide !== "undefined") lucide.createIcons();
 
-        // Auto-scroll vers l'employé actif
+        // Remettre le scroll à zéro puis centrer sur l'employé actif
+        container.scrollLeft = 0;
         if (state.activeEmployeeId) {
             requestAnimationFrame(() => {
                 const activeChip = container.querySelector(".pointage-emp-chip.active");
-                if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
+                if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "start", behavior: "instant" });
             });
         }
     }
