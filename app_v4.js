@@ -7393,7 +7393,7 @@ function renderPointageEmpBar() {
     const container = document.getElementById("pointage-emp-list");
     if (!container) return;
     container.innerHTML = "";
-    container.scrollLeft = 0;
+    container.scrollTo({ left: 0, behavior: "instant" });
     let sortedEmps = getSortedEmployees();
     const activeEmps = sortedEmps.filter(e => isEmployeeActive(e));
     if (activeEmps.length === 0) {
@@ -7451,13 +7451,12 @@ function renderPointageEmpBar() {
 
         if (typeof lucide !== "undefined") lucide.createIcons();
 
-        // Forcer le scroll à gauche après rendu
-        container.scrollLeft = 0;
+        container.scrollTo({ left: 0, behavior: "instant" });
         if (state.activeEmployeeId) {
             requestAnimationFrame(() => {
                 const activeChip = container.querySelector(".pointage-emp-chip.active");
                 if (activeChip) {
-                    container.scrollLeft = activeChip.offsetLeft - 8;
+                    container.scrollTo({ left: activeChip.offsetLeft - 8, behavior: "instant" });
                 }
             });
         }
