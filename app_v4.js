@@ -7408,6 +7408,14 @@ function renderPointageEmpBar() {
     // Scroll to left when a function is selected
     container.scrollLeft = 0;
 
+    // Scroll to active employee after rendering
+    if (state.activeEmployeeId) {
+        setTimeout(() => {
+            const activeChip = container.querySelector(".pointage-emp-chip.active");
+            if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
+        }, 50);
+    }
+
     // Show employee chips (filteredEmps already contains only pinned functions' employees)
     // Séparer les employés avec horaires standards par défaut
     const defaultScheduleEmps = filteredEmps.filter(e => e.hasDefaultSchedule);
