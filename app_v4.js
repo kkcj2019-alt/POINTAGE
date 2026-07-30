@@ -1049,28 +1049,18 @@ function getRowCalculations(data, detail, periodPaid, employeeIsRendement) {
     let legalDayMinutes = 0;
     
     if (data.rendementActive && data.arrivee) {
-        // Si les 4 champs sont renseignés → calcul normal + rendement
+        // Si les 4 champs sont renseignés → calcul complet
         if (data.pause && data.reprise && data.fin) {
             totalMinutes = calculateShiftMinutes(data.arrivee, data.pause, data.reprise, data.fin);
             legalDayMinutes = totalMinutes;
             legalNightMinutes = 0;
-        }
-        // Si pause sans reprise → arrivée → pause seulement
-        else if (data.pause) {
-            totalMinutes = calculateShiftMinutes(data.arrivee, data.pause, "", "");
+        } else {
+            // Calculer uniquement les intervalles où les 2 bornes sont remplies
+            let morningMin = (data.pause) ? calculateShiftMinutes(data.arrivee, data.pause, "", "") : 0;
+            let afternoonMin = (data.reprise && data.fin) ? calculateShiftMinutes("", "", data.reprise, data.fin) : 0;
+            totalMinutes = morningMin + afternoonMin;
+            if (totalMinutes === 0) totalMinutes = 480; // Arrivée+Fin seules ou Arrivée seule → RENDEMENT
             legalDayMinutes = totalMinutes;
-            legalNightMinutes = 0;
-        }
-        // Arrivée + Fin seulement (pas de pause) → RENDEMENT seul (480 min mais affichage spécial)
-        else if (data.fin) {
-            totalMinutes = 480;
-            legalDayMinutes = 480;
-            legalNightMinutes = 0;
-        }
-        // Arrivée seule → RENDEMENT seul
-        else {
-            totalMinutes = 480;
-            legalDayMinutes = 480;
             legalNightMinutes = 0;
         }
     } else if (data.rendementActive && data.status === "present") {
@@ -2536,7 +2526,7 @@ function generateTable() {
                 <input type="text" class="obs-input" data-field="observation" value="${data.observation || ''}" placeholder="Ex: Retard..." ${getFieldDisabled(data.observation)} style="width: 100%; min-width: 120px; font-size: 0.8rem; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-family: inherit; ${getFieldStyle(data.observation)}">
             </td>
             
-${(data.rendementActive && data.pause) ?
+${(data.rendementActive && (data.pause || (data.reprise && data.fin))) ?
                 `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                  <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
                  <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)}</td>` :
@@ -2629,11 +2619,11 @@ ${(data.rendementActive && data.pause) ?
             trSynth.innerHTML = `
                 <td style="padding: 12px 16px; text-align: left;">${dayLabelSynth}</td>
                 <td style="padding: 12px 16px; text-align: left;">${displayStatus}</td>
-                ${data.rendementActive && data.pause ?
+                ${data.rendementActive && (data.pause || (data.reprise && data.fin)) ?
                     `<td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalNightMinutes > 0 ? `${minutesToHoursStr(legalNightMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 800; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span></td>` :
-                    `${data.rendementActive && (data.arrivee || data.status === "present") && !data.pause ?
+                    `${data.rendementActive && (data.arrivee || data.status === "present") && (!data.pause && !(data.reprise && data.fin)) ?
                     `<td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 800; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;">RENDEMENT</td>` :
@@ -3700,7 +3690,7 @@ function recalculateRow(trElement) {
     const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
     
     // Afficher les résultats sur la ligne
-if (data.rendementActive && data.pause) {
+if (data.rendementActive && (data.pause || (data.reprise && data.fin))) {
         const rdtCount = getRendementDaysCount(state.activeEmployeeId);
         trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}`;
         trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}`;
@@ -4185,11 +4175,11 @@ function exportToPDF(employeeIds) {
                     <td style="color:#888">${data.reprise || '&mdash;'}</td>
                     <td>${data.fin || '&mdash;'}</td>
                     ${nightCols}
-                    ${data.rendementActive && !data.pause ?
+                    ${data.rendementActive && (!data.pause && !(data.reprise && data.fin)) ?
                          `<td style="color:#b45309; font-weight:800; text-align:center; background:#fffbeb;">${minutesToHoursStr(legalDay)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span></td>
                          <td style="color:#7c3aed; font-weight:600; text-align:center; background:#fffbeb;">${minutesToHoursStr(legalDay)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span></td>
                          <td style="color:#b45309; font-weight:800; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT</td>` :
-                        `${data.rendementActive && data.pause ?
+                        `${data.rendementActive && (data.pause || (data.reprise && data.fin)) ?
                         `<td style="color:#1d4ed8; font-weight:600">${minutesToHoursStr(legalDay)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span></td>
                         <td style="color:#7c3aed; font-weight:600">${minutesToHoursStr(legalNight)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span></td>
                         <td style="color:#b45309; font-weight:800; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(total)}<br><span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(total)}</span></td>` :
@@ -4486,11 +4476,11 @@ function exportSynthesisPDF(employeeIds) {
                 <tr style="background:${rowBg}">
                     <td style="text-align:left;padding:8px 10px;">${dayLabel}</td>
                     <td>${displayStatus}</td>
-                    ${data.rendementActive && !data.pause && data.status === "present" ?
+                    ${data.rendementActive && (!data.pause && !(data.reprise && data.fin)) && data.status === "present" ?
                          `<td style="color:#b45309;font-weight:800;text-align:center;">${legalDay > 0 ? `${minutesToHoursStr(legalDay)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
                          <td style="color:#7c3aed;font-weight:600;text-align:center;">${legalDay > 0 ? `${minutesToHoursStr(legalDay)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
                          <td style="color:#b45309;font-weight:800;background:#fffbeb;border:1px solid #fde68a;">RENDEMENT</td>` :
-                        `${data.rendementActive && data.pause ?
+                        `${data.rendementActive && (data.pause || (data.reprise && data.fin)) ?
                         `<td style="color:#1d4ed8;font-weight:600;">${legalDay > 0 ? `${minutesToHoursStr(legalDay)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDay)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
                         <td style="color:#7c3aed;font-weight:600;">${legalNight > 0 ? `${minutesToHoursStr(legalNight)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNight)}</span>` : '<span style="color:#d1d5db;">—</span>'}</td>
                         <td style="color:#b45309;font-weight:800;background:#fffbeb;border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span></td>` :

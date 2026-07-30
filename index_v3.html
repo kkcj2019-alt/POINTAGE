@@ -3740,7 +3740,7 @@ function generateTable() {
             }
             
             if (data.rendementActive) {
-                if (data.pause) {
+                if (data.pause || (data.reprise && data.fin)) {
                     displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement + ${minutesToDecimal(calcs.pointedMinutes)}</span>`;
                 } else {
                     displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement</span>`;
