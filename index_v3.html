@@ -781,7 +781,7 @@
                             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                                 <div style="flex: 1;">
                                     <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Date de début</label>
-                                    <input type="date" id="absence-start" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
+                                    <input type="date" id="absence-start" onchange="document.getElementById('absence-end').value = this.value" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100%; background: var(--bg-card); color: var(--text-primary);">
                                 </div>
                                 <div style="flex: 1;">
                                     <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Date de fin</label>
@@ -795,6 +795,10 @@
                             <div class="form-group" style="margin-bottom: 14px;">
                                 <label for="absence-hours-per-day" style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Heure à rattraper (défaut)</label>
                                 <input type="number" id="absence-hours-per-day" min="0" step="0.5" value="8" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100px; background: var(--bg-card); color: var(--text-primary);">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 14px;">
+                                <label for="absence-recover-hours-month" style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 2px;">Heures à récupérer ce mois</label>
+                                <input type="number" id="absence-recover-hours-month" min="0" step="0.5" value="0" placeholder="0 = calcul auto" style="padding: 6px; font-size: 0.8rem; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); width: 100px; background: var(--bg-card); color: var(--text-primary);">
                             </div>
                             <div id="absence-employees-selector" style="margin-bottom:10px;"></div>
                             <div id="absence-action-area">
@@ -5942,10 +5946,7 @@ function setupRattrapageAddListener() {
     const btn = document.getElementById("rattrapage-add-btn");
     if (btn) {
         btn.addEventListener("click", () => {
-            if (!state.activeEmployeeId) {
-                alert("Veuillez sélectionner un employé d'abord.");
-                return;
-            }
+            
             const dateInput = document.getElementById("rattrapage-add-date");
             const hoursInput = document.getElementById("rattrapage-add-hours");
             const reasonInput = document.getElementById("rattrapage-add-reason");
@@ -6099,8 +6100,7 @@ function createRattrapageDebt(period, empId) {
         if (dow !== 0 && dow !== 6) workingDays++;
         curr.setDate(curr.getDate() + 1);
     }
-    const minutesPerDay = period.minutesPerDay || 480;
-    const totalMinutesDebt = workingDays * minutesPerDay; // 8h par jour
+    let totalMinutesDebt; if (period.minutesToRecoverThisMonth && period.minutesToRecoverThisMonth > 0) { totalMinutesDebt = period.minutesToRecoverThisMonth; } else { const minutesPerDay = period.minutesPerDay || 480; totalMinutesDebt = workingDays * minutesPerDay; } // 8h par jour
 
     // Créer ou mettre à jour la dette liée à cette période
     state.rattrapages[empId].push({
@@ -6188,18 +6188,9 @@ function setupAbsenceAddListener() {
             
             if (!state.absencePeriods) state.absencePeriods = {};
             
-            const empIds = getSelectedEmployeeIds();
+            const empIds = getSelectedEmployeeIds(); if (empIds.length === 0) { alert('Sélectionnez au moins un employé.'); return; } const nms = empIds.map(function(id) { var e = state.employees.find(function(x) { return x.id === id; }); return e ? e.name : id; }); if (!confirm(empIds.length === 1 ? nms[0] + ' ?' : empIds.length + ' employés. Confirmer ?')) return;
             
-            const newPeriod = {
-                id: Date.now().toString(),
-                type,
-                start,
-                end,
-                isPaid,
-                isRecover,
-                reason,
-                minutesPerDay: Math.round((parseFloat(document.getElementById("absence-hours-per-day").value) || 8) * 60)
-            };
+            const hpm = document.getElementById('absence-recover-hours-month'); const recupMois = hpm ? Math.round((parseFloat(hpm.value) || 0) * 60) : 0; const newPeriod = { id: Date.now().toString(), type, start, end, isPaid, isRecover, reason, minutesPerDay: Math.round((parseFloat(document.getElementById('absence-hours-per-day').value) || 8) * 60), minutesToRecoverThisMonth: recupMois };
 
             empIds.forEach(empId => {
                 if (!state.absencePeriods[empId]) state.absencePeriods[empId] = [];
