@@ -7393,6 +7393,7 @@ function renderPointageEmpBar() {
     const container = document.getElementById("pointage-emp-list");
     if (!container) return;
     container.innerHTML = "";
+    container.scrollLeft = 0;
     let sortedEmps = getSortedEmployees();
     const activeEmps = sortedEmps.filter(e => isEmployeeActive(e));
     if (activeEmps.length === 0) {
@@ -7450,12 +7451,14 @@ function renderPointageEmpBar() {
 
         if (typeof lucide !== "undefined") lucide.createIcons();
 
-        // Remettre le scroll à zéro puis centrer sur l'employé actif
+        // Forcer le scroll à gauche après rendu
         container.scrollLeft = 0;
         if (state.activeEmployeeId) {
             requestAnimationFrame(() => {
                 const activeChip = container.querySelector(".pointage-emp-chip.active");
-                if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "start", behavior: "instant" });
+                if (activeChip) {
+                    container.scrollLeft = activeChip.offsetLeft - 8;
+                }
             });
         }
     }
