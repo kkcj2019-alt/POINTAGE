@@ -7405,17 +7405,6 @@ function renderPointageEmpBar() {
         return;
     }
 
-    // Scroll to left when a function is selected
-    container.scrollLeft = 0;
-
-    // Scroll to active employee after rendering
-    if (state.activeEmployeeId) {
-        setTimeout(() => {
-            const activeChip = container.querySelector(".pointage-emp-chip.active");
-            if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
-        }, 50);
-    }
-
     // Show employee chips (filteredEmps already contains only pinned functions' employees)
     // Séparer les employés avec horaires standards par défaut
     const defaultScheduleEmps = filteredEmps.filter(e => e.hasDefaultSchedule);
@@ -7455,12 +7444,20 @@ function renderPointageEmpBar() {
                 sep.textContent = currentRole;
                 container.appendChild(sep);
             }
-            container.appendChild(createEmpChip(emp));
-        });
-    }
+                container.appendChild(createEmpChip(emp));
+            });
+        }
 
-    if (typeof lucide !== "undefined") lucide.createIcons();
-}
+        if (typeof lucide !== "undefined") lucide.createIcons();
+
+        // Auto-scroll vers l'employé actif
+        if (state.activeEmployeeId) {
+            requestAnimationFrame(() => {
+                const activeChip = container.querySelector(".pointage-emp-chip.active");
+                if (activeChip) activeChip.scrollIntoView({ block: "nearest", inline: "center", behavior: "instant" });
+            });
+        }
+    }
 
 function updateHeaderActiveCount() {
     const el = document.getElementById("header-active-count");
