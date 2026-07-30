@@ -7392,8 +7392,8 @@ function getRendementDaysCount(empId) {
 function renderPointageEmpBar() {
     const container = document.getElementById("pointage-emp-list");
     if (!container) return;
-    container.innerHTML = "";
-    container.scrollTo({ left: 0, behavior: "instant" });
+    while (container.lastChild) container.removeChild(container.lastChild);
+    container.scrollLeft = 0;
     let sortedEmps = getSortedEmployees();
     const activeEmps = sortedEmps.filter(e => isEmployeeActive(e));
     if (activeEmps.length === 0) {
@@ -7451,13 +7451,11 @@ function renderPointageEmpBar() {
 
         if (typeof lucide !== "undefined") lucide.createIcons();
 
-        container.scrollTo({ left: 0, behavior: "instant" });
+        container.scrollLeft = 0;
         if (state.activeEmployeeId) {
             requestAnimationFrame(() => {
                 const activeChip = container.querySelector(".pointage-emp-chip.active");
-                if (activeChip) {
-                    container.scrollTo({ left: activeChip.offsetLeft - 8, behavior: "instant" });
-                }
+                if (activeChip) container.scrollLeft = activeChip.offsetLeft - 12;
             });
         }
     }
