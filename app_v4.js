@@ -5035,17 +5035,21 @@ function createRattrapageDebt(period, empId) {
     if (!state.rattrapages) state.rattrapages = {};
     if (!state.rattrapages[empId]) state.rattrapages[empId] = [];
 
-    // Compter les jours ouvrables de la période (lun-ven)
-    let workingDays = 0;
-    let curr = new Date(period.start);
-    const endD = new Date(period.end);
-    while (curr <= endD) {
-        const dow = curr.getDay();
-        if (dow !== 0 && dow !== 6) workingDays++;
-        curr.setDate(curr.getDate() + 1);
+    let totalMinutesDebt;
+    if (period.minutesToRecoverThisMonth && period.minutesToRecoverThisMonth > 0) {
+        totalMinutesDebt = period.minutesToRecoverThisMonth;
+    } else {
+        let workingDays = 0;
+        let curr = new Date(period.start);
+        const endD = new Date(period.end);
+        while (curr <= endD) {
+            const dow = curr.getDay();
+            if (dow !== 0 && dow !== 6) workingDays++;
+            curr.setDate(curr.getDate() + 1);
+        }
+        const minutesPerDay = period.minutesPerDay || 480;
+        totalMinutesDebt = workingDays * minutesPerDay;
     }
-    const minutesPerDay = period.minutesPerDay || 480;
-    const totalMinutesDebt = workingDays * minutesPerDay;
 
     // Créer ou mettre à jour la dette liée à cette période
     state.rattrapages[empId].push({
@@ -5145,11 +5149,6 @@ function setupAbsenceAddListener() {
     const btn = document.getElementById("absence-add-btn");
     if (btn) {
         btn.addEventListener("click", () => {
-            if (!state.activeEmployeeId) {
-                alert("Veuillez sélectionner un employé d'abord.");
-                return;
-            }
-            
             const type = document.getElementById("absence-type").value;
             const start = document.getElementById("absence-start").value;
             const end = document.getElementById("absence-end").value;
@@ -5176,6 +5175,25 @@ function setupAbsenceAddListener() {
             
             const empIds = getSelectedEmployeeIds();
             
+            if (empIds.length === 0) {
+                alert("Veuillez sélectionner au moins un employé.");
+                return;
+            }
+
+            const empNames = empIds.map(id => {
+                const emp = state.employees.find(e => e.id === id);
+                return emp ? emp.name : id;
+            });
+            
+            const confirmMsg = empIds.length === 1 
+                ? `Déclarer \"${type}\" pour ${empNames[0]} ?`
+                : `Déclarer \"${type}\" pour ${empIds.length} employés :\n${empNames.join('\n')}\n\nConfirmer ?`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const heuresInput = document.getElementById("absence-recover-hours-month");
+            const heuresRecupCeMois = heuresInput ? Math.round((parseFloat(heuresInput.value) || 0) * 60) : 0;
+
             const newPeriod = {
                 id: Date.now().toString(),
                 type,
@@ -5184,7 +5202,8 @@ function setupAbsenceAddListener() {
                 isPaid,
                 isRecover,
                 reason,
-                minutesPerDay: Math.round((parseFloat(document.getElementById("absence-hours-per-day").value) || 8) * 60)
+                minutesPerDay: Math.round((parseFloat(document.getElementById("absence-hours-per-day").value) || 8) * 60),
+                minutesToRecoverThisMonth: heuresRecupCeMois
             };
 
             empIds.forEach(empId => {
@@ -5320,6 +5339,10 @@ function resetAbsenceForm() {
     if (typeEl) typeEl.value = "faute_entreprise";
     document.getElementById("absence-is-paid").checked = true;
     document.getElementById("absence-is-recover").checked = true;
+    const hpd = document.getElementById("absence-hours-per-day");
+    if (hpd) hpd.value = "8";
+    const rhm = document.getElementById("absence-recover-hours-month");
+    if (rhm) rhm.value = "0";
     document.getElementById("absence-action-area").innerHTML = `
         <button id="absence-add-btn" type="button" class="btn btn-primary btn-sm" style="width: 100%; padding: 8px;">Enregistrer l'ajustement</button>
     `;
