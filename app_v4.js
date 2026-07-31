@@ -4685,7 +4685,19 @@ function getFilteredSynthEmployeeIds() {
 }
 
 function filterSynthEmployees() {
-    populateSynthFuncFilter();
+    const sel = document.getElementById("synth-func-filter");
+    if (!sel) return;
+    const func = sel.value;
+    if (func) {
+        const emp = state.employees.find(e => isEmployeeActive(e) && (e.role || "Autre").trim() === func);
+        if (emp) {
+            state.activeEmployeeId = emp.id;
+            saveStateToLocalStorage();
+            updateActiveEmployeeUI();
+            generateTable();
+            renderRattrapagesDashboard();
+        }
+    }
 }
 
 function printFilteredSynthesis() {
