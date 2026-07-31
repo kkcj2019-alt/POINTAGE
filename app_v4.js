@@ -4729,6 +4729,24 @@ function searchSynthEmployee() {
     }
 }
 
+function searchHeaderEmployee() {
+    const input = document.getElementById("header-emp-search");
+    if (!input) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) return;
+    if (q.length < 2) return;
+    const emp = state.employees.find(e => isEmployeeActive(e) && e.name.toLowerCase().includes(q));
+    if (emp) {
+        state.activeEmployeeId = emp.id;
+        saveStateToLocalStorage();
+        updateActiveEmployeeUI();
+        generateTable();
+        renderRattrapagesDashboard();
+        input.value = "";
+        input.blur();
+    }
+}
+
 function printFilteredSynthesis() {
     const ids = getFilteredSynthEmployeeIds();
     if (ids.length === 0) { alert("Aucun employé trouvé pour cette fonction."); return; }
