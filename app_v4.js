@@ -5178,8 +5178,11 @@ function getSelectedEmployeeIds() {
 function renderEmployeeCheckboxes(editingPeriodId) {
     const container = document.getElementById("absence-employees-selector");
     if (!container) return;
-    const employees = state.employees.filter(e => isEmployeeActive(e, state.currentYear, state.currentMonth));
-    const allIds = new Set(employees.map(e => e.id));
+    const employees = state.employees ? state.employees.filter(e => isEmployeeActive(e)) : [];
+    if (employees.length === 0) {
+        container.innerHTML = `<div style="padding:8px;font-size:0.75rem;color:var(--text-muted);text-align:center;">Aucun employé actif trouvé. Vérifiez que des employés existent dans Employés & Paramètres.</div>`;
+        return;
+    }
 
     let preSelected = new Set();
     if (editingPeriodId && state.absencePeriods) {
