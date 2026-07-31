@@ -1060,8 +1060,14 @@ function getRowCalculations(data, detail, periodPaid, employeeIsRendement) {
             let afternoonMin = (data.reprise && data.fin) ? calculateShiftMinutes("", "", data.reprise, data.fin) : 0;
             totalMinutes = morningMin + afternoonMin;
             if (totalMinutes === 0) {
-                totalMinutes = 480; // Arrivée+Fin seules ou Arrivée seule → RENDEMENT
-                legalDayMinutes = 0;
+                // Arrivée + Fin seules → calculer le total réel (Fin - Arrivée) pour Jour/Nuit
+                if (data.fin) {
+                    totalMinutes = Math.max(0, timeToMinutes(data.fin) - timeToMinutes(data.arrivee));
+                    legalDayMinutes = totalMinutes;
+                } else {
+                    totalMinutes = 480; // Arrivée seule → RENDEMENT (journée complète)
+                    legalDayMinutes = 0;
+                }
                 legalNightMinutes = 0;
             } else {
                 legalDayMinutes = totalMinutes;
