@@ -1194,6 +1194,8 @@ function refreshTabContent(targetId) {
         generatePresenceReport();
     } else if (targetId === "tab-parametres") {
         initParametresTab();
+    } else if (targetId === "tab-synthese") {
+        populateSynthFuncFilter();
     }
 }
 
@@ -4656,6 +4658,40 @@ function exportSynthesisPDF(employeeIds) {
     win.onload = function() {
         setTimeout(() => win.print(), 300);
     };
+}
+
+// ==========================================================================
+// SYNTHÈSE : Filtre par fonction et impression
+// ==========================================================================
+function populateSynthFuncFilter() {
+    const sel = document.getElementById("synth-func-filter");
+    if (!sel) return;
+    const roles = new Set();
+    state.employees.forEach(e => {
+        if (isEmployeeActive(e)) roles.add((e.role || "Autre").trim());
+    });
+    const sorted = Array.from(roles).sort();
+    let html = '<option value="">Toutes les fonctions</option>';
+    sorted.forEach(r => { html += `<option value="${r}">${r}</option>`; });
+    sel.innerHTML = html;
+}
+
+function getFilteredSynthEmployeeIds() {
+    const sel = document.getElementById("synth-func-filter");
+    if (!sel) return state.employees.filter(e => isEmployeeActive(e)).map(e => e.id);
+    const func = sel.value;
+    if (!func) return state.employees.filter(e => isEmployeeActive(e)).map(e => e.id);
+    return state.employees.filter(e => isEmployeeActive(e) && (e.role || "Autre").trim() === func).map(e => e.id);
+}
+
+function filterSynthEmployees() {
+    populateSynthFuncFilter();
+}
+
+function printFilteredSynthesis() {
+    const ids = getFilteredSynthEmployeeIds();
+    if (ids.length === 0) { alert("Aucun employé trouvé pour cette fonction."); return; }
+    exportSynthesisPDF(ids);
 }
 
 // ==========================================================================
