@@ -2287,9 +2287,21 @@ function generateTable() {
         return;
     }
     
-    // Bloquer le pointage si l'employé est inactif pour le mois courant
-    const activeEmp = state.employees.find(e => e.id === state.activeEmployeeId);
-    if (activeEmp && !isEmployeeActive(activeEmp)) {
+        // Bloquer le pointage si l'employé est inactif pour le mois courant
+        const activeEmp = state.employees.find(e => e.id === state.activeEmployeeId);
+
+        // Mettre à jour les en-têtes de la synthèse pour les employés au rendement
+        const hJour = document.getElementById("synth-header-jour");
+        const hNuit = document.getElementById("synth-header-nuit");
+        if (activeEmp && activeEmp.isRendement) {
+            if (hJour) hJour.textContent = "Tps travail Jour";
+            if (hNuit) hNuit.textContent = "Tps travail Nuit";
+        } else {
+            if (hJour) hJour.textContent = "Jour (H)";
+            if (hNuit) hNuit.textContent = "Nuit (H)";
+        }
+
+        if (activeEmp && !isEmployeeActive(activeEmp)) {
         const inactiveSince = activeEmp.inactiveFrom;
         let sinceLabel = '';
         if (inactiveSince) {
@@ -2549,7 +2561,7 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverE
                 `${(data.rendementActive && (data.arrivee || data.status === "present") && (!data.pause && !(data.reprise && data.fin) && recoverExtra === 0)) ?
                     `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                       <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
-                      <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT</td>` :
+                      <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT UNIQUEMENT</td>` :
                     `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                      <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
                      <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux">${minutesToHoursStr(totalMinutes)}</td>`
@@ -2624,7 +2636,7 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverE
                 if (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0 || recoverExtra > 0) {
                     displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement + ${minutesToDecimal(totalMinutes)}</span>`;
                 } else {
-                    displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement</span>`;
+                    displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement uniquement</span>`;
                 }
             }
             if (recoverExtra > 0) {
@@ -2645,7 +2657,7 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverE
                     `${data.rendementActive && (data.arrivee || data.status === "present") && (!data.pause && !(data.reprise && data.fin) && recoverExtra === 0) ?
                     `<td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                      <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalNightMinutes > 0 ? `${minutesToHoursStr(legalNightMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
-                     <td style="padding: 12px 16px; text-align: center; font-weight: 800; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;">RENDEMENT</td>` :
+                     <td style="padding: 12px 16px; text-align: center; font-weight: 800; color: #b45309; background: #fffbeb; border: 1px solid #fde68a;">RENDEMENT UNIQUEMENT</td>` :
                     `<td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-day);">${legalDayMinutes > 0 ? `${minutesToHoursStr(legalDayMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalDayMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                     <td style="padding: 12px 16px; text-align: center; font-weight: 500; color: var(--accent-night);">${legalNightMinutes > 0 ? `${minutesToHoursStr(legalNightMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(legalNightMinutes)}</span>` : '<span style="color:#cbd5e1;">—</span>'}</td>
                      <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: ${totalMinutes > 0 ? 'var(--accent-total)' : '#9ca3af'};">${totalMinutes > 0 ? `${minutesToHoursStr(totalMinutes)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalMinutes)}</span>${recoverExtra > 0 ? `<br><span style="font-size:0.65rem;color:#b45309;">DONT ${minutesToDecimal(recoverExtra)}h (à rattraper)</span>` : ''}` : '<span style="color:#cbd5e1;">—</span>'}</td>`
