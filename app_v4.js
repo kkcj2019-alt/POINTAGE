@@ -1194,6 +1194,8 @@ function refreshTabContent(targetId) {
         generatePresenceReport();
     } else if (targetId === "tab-parametres") {
         initParametresTab();
+    } else if (targetId === "tab-ajustements") {
+        renderEmployeeCheckboxes();
     } else if (targetId === "tab-synthese") {
         populateSynthFuncFilter();
     }
