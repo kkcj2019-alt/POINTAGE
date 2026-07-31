@@ -176,6 +176,7 @@
                 </div>
                 
                 <div class="header-controls">
+                    <input type="text" id="header-emp-search" placeholder="🔍 Rechercher un employé..." oninput="searchHeaderEmployee()" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); width:200px; margin-right:8px;">
                     <!-- Month & Year Selectors -->
                     <div class="selector-group">
                         <div class="custom-select-wrapper">
@@ -6149,7 +6150,7 @@ function setupAbsenceAddListener() {
             
             if (!state.absencePeriods) state.absencePeriods = {};
             
-            const empIds = getSelectedEmployeeIds(); if (empIds.length === 0) { alert('Sélectionnez au moins un employé.'); return; } const nms = empIds.map(function(id) { var e = state.employees.find(function(x) { return x.id === id; }); return e ? e.name : id; }); if (!confirm(empIds.length === 1 ? nms[0] + ' ?' : empIds.length + ' employés. Confirmer ?')) return;
+            const empIds = getSelectedEmployeeIds(); if (empIds.length === 0) { alert('Sélectionnez au moins un employé.'); return; } const nms = empIds.map(function(id) { var e = state.employees.find(function(x) { return x.id === id; }); return e ? e.name : id; }); if (!confirm(empIds.length === 1 ? nms[0] + ' ?' : empIds.length + ' employés. Confirmer ?')) return; if (empIds.length === 0) { alert('Sélectionnez au moins un employé.'); return; } const nms = empIds.map(function(id) { var e = state.employees.find(function(x) { return x.id === id; }); return e ? e.name : id; }); if (!confirm(empIds.length === 1 ? nms[0] + ' ?' : empIds.length + ' employés. Confirmer ?')) return;
             
             const hpm = document.getElementById('absence-recover-hours-month'); const recupMois = hpm ? Math.round((parseFloat(hpm.value) || 0) * 60) : 0; const newPeriod = { id: Date.now().toString(), type, start, end, isPaid, isRecover, reason, minutesPerDay: Math.round((parseFloat(document.getElementById('absence-hours-per-day').value) || 8) * 60), minutesToRecoverThisMonth: recupMois };
 
