@@ -2400,6 +2400,7 @@ function generateTable() {
         // Auto-detect if day falls in an absence period
         let periodPaid = null;
         let paidAbsenceExtra = 0;
+        let recoverExtra = 0;
         let isDeclaredAbsenceDay = false;
         if (state.absencePeriods && state.absencePeriods[state.activeEmployeeId]) {
             const currentObjDate = new Date(dateKey);
@@ -2408,6 +2409,7 @@ function generateTable() {
                 const endObj = new Date(period.end);
                 if (currentObjDate >= startObj && currentObjDate <= endObj) {
                     if (period.isPaid) paidAbsenceExtra += (period.minutesPerDay || 480);
+                    if (period.isRecover) recoverExtra += (period.minutesPerDay || 480);
                     if (!data.arrivee && !data.nuitActive) {
                         data.status = period.type;
                         periodPaid = period.isPaid ? (period.minutesPerDay || 480) : 0;
@@ -2426,7 +2428,7 @@ function generateTable() {
         const calcs = getRowCalculations(data, detail, periodPaid, empRdt && empRdt.isRendement);
         const legalDayMinutes = calcs.legalDayMinutes;
         const legalNightMinutes = calcs.legalNightMinutes;
-        const totalMinutes = calcs.totalMinutes + (paidAbsenceExtra > 0 && (data.arrivee || data.nuitActive) ? paidAbsenceExtra : 0);
+        const totalMinutes = calcs.totalMinutes + (paidAbsenceExtra > 0 && (data.arrivee || data.nuitActive) ? paidAbsenceExtra : 0) + recoverExtra;
         
         if (!isWeekend && !isHoliday && totalMinutes === 0 && (data.status === "present" || data._isAutoAbsent)) {
             unworkedWorkingDays.push(`${dayStr}/${monthStr}`);
@@ -2531,7 +2533,7 @@ function generateTable() {
                 <input type="text" class="obs-input" data-field="observation" value="${data.observation || ''}" placeholder="Ex: Retard..." ${getFieldDisabled(data.observation)} style="width: 100%; min-width: 120px; font-size: 0.8rem; padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-family: inherit; ${getFieldStyle(data.observation)}">
             </td>
             
-${(data.rendementActive && (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0)) ?
+${(data.rendementActive && (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0 || recoverExtra > 0)) ?
                 `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                  <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
                  <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)}</td>` :
@@ -2610,11 +2612,14 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || paidAbse
             }
             
             if (data.rendementActive) {
-                if (data.pause) {
-                    displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement + ${minutesToDecimal(calcs.pointedMinutes)}</span>`;
+                if (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0 || recoverExtra > 0) {
+                    displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement + ${minutesToDecimal(totalMinutes)}</span>`;
                 } else {
                     displayStatus += `<br><span style="color:#0284c7; font-size:0.7rem; font-weight:600; display:inline-block; margin-top:4px;">Rendement</span>`;
                 }
+            }
+            if (recoverExtra > 0) {
+                displayStatus += `<br><span style="color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:2px 6px; border-radius:12px; font-size:0.68rem; font-weight:700; display:inline-block; margin-top:3px;">&#x27F3; ${minutesToDecimal(recoverExtra)}h à rattraper</span>`;
             }
             
             // Day label
@@ -3695,7 +3700,7 @@ function recalculateRow(trElement) {
     const { totalMinutes, legalDayMinutes, legalNightMinutes } = calcs;
     
     // Afficher les résultats sur la ligne
-if (data.rendementActive && (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0)) {
+if (data.rendementActive && (data.pause || (data.reprise && data.fin) || paidAbsenceExtra > 0 || recoverExtra > 0)) {
         const rdtCount = getRendementDaysCount(state.activeEmployeeId);
         trElement.querySelector(".val-total-jour").innerHTML = `${minutesToHoursStr(legalDayMinutes)}`;
         trElement.querySelector(".val-total-nuit").innerHTML = `${minutesToHoursStr(legalNightMinutes)}`;
@@ -3746,6 +3751,7 @@ function recalculateEntireMonthKPIs() {
         
         let periodPaid = null;
         let paidAbsenceExtra = 0;
+        let recoverExtra = 0;
         let isDeclaredAbsenceDay = false;
         if (state.absencePeriods && state.absencePeriods[state.activeEmployeeId]) {
             const currentObjDate = new Date(dateKey);
@@ -3754,6 +3760,7 @@ function recalculateEntireMonthKPIs() {
                 const endObj = new Date(period.end);
                 if (currentObjDate >= startObj && currentObjDate <= endObj) {
                     if (period.isPaid) paidAbsenceExtra += (period.minutesPerDay || 480);
+                    if (period.isRecover) recoverExtra += (period.minutesPerDay || 480);
                     if (!data.arrivee && !data.nuitActive) {
                         periodPaid = period.isPaid ? (period.minutesPerDay || 480) : 0;
                         isDeclaredAbsenceDay = true;
@@ -3771,6 +3778,9 @@ function recalculateEntireMonthKPIs() {
         totalHoursMin += totalMinutes;
         if (paidAbsenceExtra > 0 && (data.arrivee || data.nuitActive)) {
             totalHoursMin += paidAbsenceExtra;
+        }
+        if (recoverExtra > 0) {
+            totalHoursMin += recoverExtra;
         }
         if (!isDeclaredAbsenceDay && (totalMinutes > 0 || data.rendementActive === true)) {
             workedDaysCount++;
