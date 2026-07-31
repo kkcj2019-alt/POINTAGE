@@ -5207,7 +5207,12 @@ function renderEmployeeCheckboxes(editingPeriodId) {
 
     container.innerHTML = `
         <div style="margin-bottom:10px;">
-            <label style="font-size:0.7rem;color:var(--text-muted);display:block;margin-bottom:4px;">Appliquer aux employés :</label>
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap:wrap;">
+                <label style="font-size:0.7rem;color:var(--text-muted);white-space:nowrap;">Appliquer aux employés :</label>
+                <input type="text" id="absence-emp-search" placeholder="🔍 Rechercher..." oninput="filterAbsenceEmployees()" style="flex:1; min-width:120px; padding:4px 8px; font-size:0.7rem; border-radius:4px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary);">
+                <button type="button" onclick="checkAllAbsenceEmployees()" style="font-size:0.65rem;padding:2px 6px;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;background:var(--bg-input);color:var(--text-primary);">Tous</button>
+                <button type="button" onclick="uncheckAllAbsenceEmployees()" style="font-size:0.65rem;padding:2px 6px;border:1px solid var(--border-color);border-radius:4px;cursor:pointer;background:var(--bg-input);color:var(--text-primary);">Aucun</button>
+            </div>
             <div style="border:1px solid var(--border-color);border-radius:6px;background:var(--bg-card);max-height:180px;overflow-y:auto;">
                 ${sortKeys.map(role => {
                     const emps = groups[role];
@@ -5241,6 +5246,34 @@ function renderEmployeeCheckboxes(editingPeriodId) {
             document.querySelectorAll(`.absence-emp-cb[data-func="${func}"]`).forEach(empCb => empCb.checked = this.checked);
         });
     });
+}
+
+function filterAbsenceEmployees() {
+    const q = (document.getElementById("absence-emp-search")?.value || "").trim().toLowerCase();
+    document.querySelectorAll(".absence-emp-cb").forEach(cb => {
+        const label = cb.closest("label");
+        const row = label?.closest(".func-employees")?.previousElementSibling?.closest("div") || label?.parentElement?.parentElement;
+        const name = label?.textContent?.toLowerCase() || "";
+        if (row) row.style.display = (!q || name.includes(q)) ? "" : "none";
+    });
+    document.querySelectorAll(".func-employees").forEach(div => {
+        const visible = div.querySelectorAll(".absence-emp-cb").length > 0 && 
+            Array.from(div.querySelectorAll(".absence-emp-cb")).some(cb => {
+                const label = cb.closest("label");
+                const row = label?.parentElement?.parentElement;
+                return row && row.style.display !== "none";
+            });
+        const groupDiv = div.parentElement;
+        if (groupDiv) groupDiv.style.display = visible ? "" : "none";
+    });
+}
+
+function checkAllAbsenceEmployees() {
+    document.querySelectorAll(".absence-emp-cb").forEach(cb => { cb.checked = true; });
+}
+
+function uncheckAllAbsenceEmployees() {
+    document.querySelectorAll(".absence-emp-cb").forEach(cb => { cb.checked = false; });
 }
 
 function setupAbsenceAddListener() {
