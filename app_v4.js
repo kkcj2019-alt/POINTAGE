@@ -2774,7 +2774,13 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverE
 
     // Update NEW synthesis KPI elements
     const elSynthTotalPaid = document.getElementById("synth-total-paid");
-    if (elSynthTotalPaid) elSynthTotalPaid.innerHTML = `${minutesToHoursStr(totalHoursMin)}`;
+    if (elSynthTotalPaid) {
+        if (activeEmp && activeEmp.isRendement) {
+            elSynthTotalPaid.innerHTML = `rendement + ${minutesToHoursStr(totalHoursMin)} <span style="font-size:0.85em;font-weight:800;color:#ea580c;background:#fff7ed;padding:2px 6px;border-radius:6px;border:1px solid #fdba74;display:inline-block;white-space:nowrap;margin-left:4px;">${minutesToDecimal(totalHoursMin)}</span>`;
+        } else {
+            elSynthTotalPaid.innerHTML = `${minutesToHoursStr(totalHoursMin)}`;
+        }
+    }
     
     const elSynthTotalNight = document.getElementById("synth-total-night");
     if (elSynthTotalNight) elSynthTotalNight.innerHTML = `${minutesToHoursStr(totalNuitMin)}`;
