@@ -2429,7 +2429,7 @@ function generateTable() {
                 const startObj = new Date(period.start);
                 const endObj = new Date(period.end);
                 if (currentObjDate >= startObj && currentObjDate <= endObj) {
-                    if (period.isPaid) paidAbsenceExtra += (period.minutesPerDay || 480);
+                    if (period.isPaid && !period.isRecover) paidAbsenceExtra += (period.minutesPerDay || 480);
                     if (period.isRecover) {
                         if (period.minutesToRecoverThisMonth && period.minutesToRecoverThisMonth > 0) {
                             const pd = Math.max(1, Math.ceil((new Date(period.end) - new Date(period.start)) / (1000*60*60*24)) + 1);
@@ -3796,7 +3796,7 @@ function recalculateEntireMonthKPIs() {
                 const startObj = new Date(period.start);
                 const endObj = new Date(period.end);
                 if (currentObjDate >= startObj && currentObjDate <= endObj) {
-                    if (period.isPaid) paidAbsenceExtra += (period.minutesPerDay || 480);
+                    if (period.isPaid && !period.isRecover) paidAbsenceExtra += (period.minutesPerDay || 480);
                     if (period.isRecover) {
                         if (period.minutesToRecoverThisMonth && period.minutesToRecoverThisMonth > 0) {
                             const pd = Math.max(1, Math.ceil((new Date(period.end) - new Date(period.start)) / (1000*60*60*24)) + 1);
