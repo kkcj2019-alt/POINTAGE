@@ -2282,7 +2282,7 @@ function generateTable() {
     renderRattrapagesDashboard();
     
     if (!state.activeEmployeeId) {
-        tbody.innerHTML = `<tr><td colspan="15" style="text-align: center; padding: 30px; color: var(--text-muted);">Veuillez sélectionner ou ajouter un employé pour commencer le pointage.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="16" style="text-align: center; padding: 30px; color: var(--text-muted);">Veuillez sélectionner ou ajouter un employé pour commencer le pointage.</td></tr>`;
         updateSummaryKPIs(0, 0, 0, 0);
         return;
     }
@@ -2313,7 +2313,7 @@ function generateTable() {
             sinceLabel = `depuis ${monthNames[inactMonth]} ${inactYear}`;
         }
         tbody.innerHTML = `
-            <tr><td colspan="15">
+            <tr><td colspan="16">
                 <div style="text-align:center; padding:40px 20px;">
                     <div style="display:inline-flex; flex-direction:column; align-items:center; gap:16px; background:#fef2f2; border:2px solid #fecaca; border-radius:16px; padding:32px 48px; max-width:520px;">
                         <div style="width:56px;height:56px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;">
@@ -2555,16 +2555,19 @@ function generateTable() {
             </td>
             
 ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverExtra > 0)) ?
-                `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
-                 <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
-                  <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)}${recoverExtra > 0 ? `<br><span style="font-size:0.6rem; color:#b45309;">DONT ${minutesToDecimal(recoverExtra)}h payé (à rattraper)</span>` : ''}</td>` :
+                 `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
+                  <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
+                  <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb; border:1px solid #fde68a;">RENDEMENT + ${minutesToHoursStr(totalMinutes)}${recoverExtra > 0 ? `<br><span style="font-size:0.6rem; color:#b45309;">DONT ${minutesToDecimal(recoverExtra)}h payé (à rattraper)</span>` : ''}</td>
+                  <td class="total-cell" data-col-group="col-totaux" style="text-align:center; color:#b45309;">${recoverExtra > 0 ? minutesToDecimal(recoverExtra) + 'h' : '—'}</td>` :
                 `${(data.rendementActive && (data.arrivee || data.status === "present") && (!data.pause && !(data.reprise && data.fin) && recoverExtra === 0)) ?
                     `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                       <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
-                      <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT UNIQUEMENT</td>` :
+                      <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux" style="text-align:center; font-weight:800; color:#b45309; background:#fffbeb;">RENDEMENT UNIQUEMENT</td>
+                      <td class="total-cell" data-col-group="col-totaux" style="text-align:center; color:#b45309;">${recoverExtra > 0 ? minutesToDecimal(recoverExtra) + 'h' : '—'}</td>` :
                     `<td class="total-cell val-total-jour" data-col-group="col-totaux">${minutesToHoursStr(legalDayMinutes)}</td>
                      <td class="total-cell val-total-nuit" data-col-group="col-totaux">${minutesToHoursStr(legalNightMinutes)}</td>
-                     <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux">${minutesToHoursStr(totalMinutes)}</td>`
+                     <td class="total-cell highlight-col val-total-global" data-col-group="col-totaux">${minutesToHoursStr(totalMinutes)}</td>
+                     <td class="total-cell" data-col-group="col-totaux" style="text-align:center; color:#b45309;">${recoverExtra > 0 ? minutesToDecimal(recoverExtra) + 'h' : '—'}</td>`
                 }`
             }
         `;
