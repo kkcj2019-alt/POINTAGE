@@ -708,6 +708,7 @@
                             Tableau de Bord Mensuel
                         </h3>
                         <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="synth-emp-search" placeholder="🔍 Rechercher un employé..." oninput="searchSynthEmployee()" style="padding:6px 10px; font-size:0.8rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); width:180px;">
                             <select id="synth-func-filter" style="padding:6px 10px; font-size:0.8rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary);" onchange="filterSynthEmployees()">
                                 <option value="">Toutes les fonctions</option>
                             </select>

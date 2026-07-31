@@ -4700,6 +4700,21 @@ function filterSynthEmployees() {
     }
 }
 
+function searchSynthEmployee() {
+    const input = document.getElementById("synth-emp-search");
+    if (!input) return;
+    const q = input.value.trim().toLowerCase();
+    if (!q) return;
+    const emp = state.employees.find(e => isEmployeeActive(e) && e.name.toLowerCase().includes(q));
+    if (emp) {
+        state.activeEmployeeId = emp.id;
+        saveStateToLocalStorage();
+        updateActiveEmployeeUI();
+        generateTable();
+        renderRattrapagesDashboard();
+    }
+}
+
 function printFilteredSynthesis() {
     const ids = getFilteredSynthEmployeeIds();
     if (ids.length === 0) { alert("Aucun employé trouvé pour cette fonction."); return; }
@@ -5194,7 +5209,7 @@ function renderEmployeeCheckboxes(editingPeriodId) {
                             <div class="func-employees" data-func="${role}" style="padding-left:20px; margin-top:2px;">
                                 ${emps.map(emp => `
                                     <label style="display:flex;align-items:center;gap:4px;font-size:0.73rem;cursor:pointer;padding:1px 4px;">
-                                        <input type="checkbox" class="absence-emp-cb" value="${emp.id}" data-func="${role}" ${hasPreSelection ? (preSelected.has(emp.id) ? 'checked' : '') : 'checked'} style="accent-color:var(--accent-primary);">
+                                        <input type="checkbox" class="absence-emp-cb" value="${emp.id}" data-func="${role}" ${hasPreSelection ? (preSelected.has(emp.id) ? 'checked' : '') : (emp.id === state.activeEmployeeId ? 'checked' : '')} style="accent-color:var(--accent-primary);">
                                         <span>${emp.name}</span>
                                     </label>
                                 `).join('')}
