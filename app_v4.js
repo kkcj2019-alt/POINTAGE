@@ -4733,19 +4733,34 @@ function searchHeaderEmployee() {
     const input = document.getElementById("header-emp-search");
     if (!input) return;
     const q = input.value.trim().toLowerCase();
-    if (!q) return;
-    if (q.length < 2) return;
-    const emp = state.employees.find(e => isEmployeeActive(e) && e.name.toLowerCase().includes(q));
-    if (emp) {
-        state.activeEmployeeId = emp.id;
-        saveStateToLocalStorage();
-        updateActiveEmployeeUI();
-        generateTable();
-        renderRattrapagesDashboard();
-        input.value = "";
-        input.blur();
-    }
+    const listEl = document.getElementById("header-emp-dropdown");
+    if (!listEl) return;
+    if (q.length < 2) { listEl.style.display = "none"; return; }
+    const matches = state.employees.filter(e => isEmployeeActive(e) && e.name.toLowerCase().includes(q)).slice(0, 8);
+    if (matches.length === 0) { listEl.style.display = "none"; return; }
+    listEl.innerHTML = matches.map(e => `<div onclick="selectHeaderEmployee('${e.id}')" style="padding:6px 10px;cursor:pointer;font-size:0.8rem;border-bottom:1px solid var(--border-color);" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background=''">${e.name} <span style="color:var(--text-muted);font-size:0.7rem;">${e.role||''}</span></div>`).join("");
+    listEl.style.display = "block";
 }
+
+function selectHeaderEmployee(empId) {
+    state.activeEmployeeId = empId;
+    saveStateToLocalStorage();
+    updateActiveEmployeeUI();
+    generateTable();
+    renderRattrapagesDashboard();
+    const input = document.getElementById("header-emp-search");
+    if (input) { input.value = ""; }
+    const listEl = document.getElementById("header-emp-dropdown");
+    if (listEl) listEl.style.display = "none";
+}
+
+document.addEventListener("click", function(e) {
+    const listEl = document.getElementById("header-emp-dropdown");
+    const input = document.getElementById("header-emp-search");
+    if (listEl && input && !input.contains(e.target) && !listEl.contains(e.target)) {
+        listEl.style.display = "none";
+    }
+});
 
 function printFilteredSynthesis() {
     const ids = getFilteredSynthEmployeeIds();
