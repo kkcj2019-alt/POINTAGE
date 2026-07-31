@@ -5287,26 +5287,28 @@ function renderEmployeeCheckboxes(editingPeriodId) {
 function filterAbsenceEmployees() {
     const q = (document.getElementById("absence-emp-search")?.value || "").trim().toLowerCase();
     const allCbs = document.querySelectorAll(".absence-emp-cb");
-    if (!q) {
-        // Show all
-        allCbs.forEach(cb => { const row = cb.closest("label"); if (row) row.style.display = ""; });
-        document.querySelectorAll(".func-employees").forEach(d => {
-            const parent = d.parentElement; if (parent) parent.style.display = "";
-        });
-        return;
-    }
     allCbs.forEach(cb => {
-        const name = cb.closest("label")?.textContent?.toLowerCase() || "";
+        const label = cb.closest("label");
+        const nameSpan = label ? label.querySelector("span") : null;
+        const name = nameSpan ? nameSpan.textContent.toLowerCase() : "";
         const row = cb.closest("label");
-        if (row) row.style.display = name.includes(q) ? "" : "none";
+        if (!q) {
+            if (row) row.style.display = "";
+        } else {
+            if (row) row.style.display = name.includes(q) ? "" : "none";
+        }
     });
-    // Hide empty groups
+    // Show/hide function groups
     document.querySelectorAll(".func-employees").forEach(d => {
         const anyVisible = Array.from(d.querySelectorAll(".absence-emp-cb")).some(cb =>
             cb.closest("label")?.style.display !== "none"
         );
         const parent = d.parentElement;
-        if (parent) parent.style.display = anyVisible ? "" : "none";
+        if (parent) parent.style.display = anyVisible || !q ? "" : "none";
+    });
+    // Also hide the "sel-all" label for empty groups
+    document.querySelectorAll(".sel-all-func").forEach(sel => {
+        const funcDiv = sel.closest(".func-employees")?.previousElementSibling?.closest("div");
     });
 }
 
