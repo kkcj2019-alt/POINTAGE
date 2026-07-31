@@ -5271,21 +5271,27 @@ function renderEmployeeCheckboxes(editingPeriodId) {
 
 function filterAbsenceEmployees() {
     const q = (document.getElementById("absence-emp-search")?.value || "").trim().toLowerCase();
-    document.querySelectorAll(".absence-emp-cb").forEach(cb => {
-        const label = cb.closest("label");
-        const row = label?.closest(".func-employees")?.previousElementSibling?.closest("div") || label?.parentElement?.parentElement;
-        const name = label?.textContent?.toLowerCase() || "";
-        if (row) row.style.display = (!q || name.includes(q)) ? "" : "none";
+    const allCbs = document.querySelectorAll(".absence-emp-cb");
+    if (!q) {
+        // Show all
+        allCbs.forEach(cb => { const row = cb.closest("label"); if (row) row.style.display = ""; });
+        document.querySelectorAll(".func-employees").forEach(d => {
+            const parent = d.parentElement; if (parent) parent.style.display = "";
+        });
+        return;
+    }
+    allCbs.forEach(cb => {
+        const name = cb.closest("label")?.textContent?.toLowerCase() || "";
+        const row = cb.closest("label");
+        if (row) row.style.display = name.includes(q) ? "" : "none";
     });
-    document.querySelectorAll(".func-employees").forEach(div => {
-        const visible = div.querySelectorAll(".absence-emp-cb").length > 0 && 
-            Array.from(div.querySelectorAll(".absence-emp-cb")).some(cb => {
-                const label = cb.closest("label");
-                const row = label?.parentElement?.parentElement;
-                return row && row.style.display !== "none";
-            });
-        const groupDiv = div.parentElement;
-        if (groupDiv) groupDiv.style.display = visible ? "" : "none";
+    // Hide empty groups
+    document.querySelectorAll(".func-employees").forEach(d => {
+        const anyVisible = Array.from(d.querySelectorAll(".absence-emp-cb")).some(cb =>
+            cb.closest("label")?.style.display !== "none"
+        );
+        const parent = d.parentElement;
+        if (parent) parent.style.display = anyVisible ? "" : "none";
     });
 }
 
