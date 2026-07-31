@@ -2650,7 +2650,7 @@ ${(data.rendementActive && (data.pause || (data.reprise && data.fin) || recoverE
                 }
             }
             if (recoverExtra > 0) {
-                displayStatus += `<br><span style="color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:2px 6px; border-radius:12px; font-size:0.68rem; font-weight:700; display:inline-block; margin-top:3px;">&#x27F3; ${minutesToDecimal(recoverExtra)}h à rattraper</span>`;
+                displayStatus += `<br><span style="color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:2px 6px; border-radius:12px; font-size:0.68rem; font-weight:700; display:inline-block; margin-top:3px;">&#x27F3; ${minutesToDecimal(recoverExtra)} à rattraper</span>`;
             }
             
             // Day label
