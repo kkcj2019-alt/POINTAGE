@@ -3797,7 +3797,14 @@ function recalculateEntireMonthKPIs() {
                 const endObj = new Date(period.end);
                 if (currentObjDate >= startObj && currentObjDate <= endObj) {
                     if (period.isPaid) paidAbsenceExtra += (period.minutesPerDay || 480);
-                    if (period.isRecover) recoverExtra += (period.minutesPerDay || 480);
+                    if (period.isRecover) {
+                        if (period.minutesToRecoverThisMonth && period.minutesToRecoverThisMonth > 0) {
+                            const pd = Math.max(1, Math.ceil((new Date(period.end) - new Date(period.start)) / (1000*60*60*24)) + 1);
+                            recoverExtra += Math.round(period.minutesToRecoverThisMonth / pd);
+                        } else {
+                            recoverExtra += (period.minutesPerDay || 480);
+                        }
+                    }
                     if (!data.arrivee && !data.nuitActive) {
                         periodPaid = period.isPaid ? (period.minutesPerDay || 480) : 0;
                         isDeclaredAbsenceDay = true;
