@@ -4686,18 +4686,30 @@ function getFilteredSynthEmployeeIds() {
 
 function filterSynthEmployees() {
     const sel = document.getElementById("synth-func-filter");
+    const empSel = document.getElementById("synth-emp-select");
     if (!sel) return;
     const func = sel.value;
-    if (func) {
-        const emp = state.employees.find(e => isEmployeeActive(e) && (e.role || "Autre").trim() === func);
-        if (emp) {
-            state.activeEmployeeId = emp.id;
-            saveStateToLocalStorage();
-            updateActiveEmployeeUI();
-            generateTable();
-            renderRattrapagesDashboard();
+    if (empSel) {
+        if (func) {
+            const emps = state.employees.filter(e => isEmployeeActive(e) && (e.role || "Autre").trim() === func);
+            let html = '<option value="">--Choisir un employé--</option>';
+            emps.forEach(e => { html += `<option value="${e.id}">${e.name}</option>`; });
+            empSel.innerHTML = html;
+            empSel.style.display = "inline-block";
+        } else {
+            empSel.style.display = "none";
         }
     }
+}
+
+function selectSynthEmployee() {
+    const empSel = document.getElementById("synth-emp-select");
+    if (!empSel || !empSel.value) return;
+    state.activeEmployeeId = empSel.value;
+    saveStateToLocalStorage();
+    updateActiveEmployeeUI();
+    generateTable();
+    renderRattrapagesDashboard();
 }
 
 function searchSynthEmployee() {

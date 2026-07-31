@@ -712,6 +712,9 @@
                             <select id="synth-func-filter" style="padding:6px 10px; font-size:0.8rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary);" onchange="filterSynthEmployees()">
                                 <option value="">Toutes les fonctions</option>
                             </select>
+                            <select id="synth-emp-select" style="padding:6px 10px; font-size:0.8rem; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-card); color:var(--text-primary); display:none;" onchange="selectSynthEmployee()">
+                                <option value="">--Choisir un employé--</option>
+                            </select>
                             <button id="synth-print-btn" onclick="printFilteredSynthesis()" class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:0.8rem;">🖨️ Imprimer</button>
                         </div>
                     </div>
